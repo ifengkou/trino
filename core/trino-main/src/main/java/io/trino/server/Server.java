@@ -38,6 +38,8 @@ import io.airlift.log.Logger;
 import io.airlift.node.NodeModule;
 import io.airlift.tracetoken.TraceTokenModule;
 import io.trino.client.NodeVersion;
+import io.trino.dynamiccatalog.DynamicCatalogStore;
+import io.trino.dynamiccatalog.DynamicCatalogStoreConfig;
 import io.trino.eventlistener.EventListenerManager;
 import io.trino.eventlistener.EventListenerModule;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
@@ -120,7 +122,14 @@ public class Server
 
             injector.getInstance(PluginManager.class).loadPlugins();
 
-            injector.getInstance(StaticCatalogStore.class).loadCatalogs();
+            boolean enableDynamicCatalog = injector.getInstance(DynamicCatalogStoreConfig.class).isEnable();
+            if (enableDynamicCatalog) {
+                injector.getInstance(DynamicCatalogStore.class).loadCatalogs();
+            }
+            else {
+                injector.getInstance(StaticCatalogStore.class).loadCatalogs();
+            }
+            //injector.getInstance(StaticCatalogStore.class).loadCatalogs();
 
             // TODO: remove this huge hack
             updateConnectorIds(injector.getInstance(Announcer.class), injector.getInstance(CatalogManager.class));

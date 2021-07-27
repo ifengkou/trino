@@ -39,6 +39,8 @@ import io.trino.dispatcher.DispatchQueryFactory;
 import io.trino.dispatcher.FailedDispatchQueryFactory;
 import io.trino.dispatcher.LocalDispatchQueryFactory;
 import io.trino.dispatcher.QueuedStatementResource;
+import io.trino.dynamiccatalog.DynamicCatalogController;
+import io.trino.dynamiccatalog.ResponseParser;
 import io.trino.event.QueryMonitor;
 import io.trino.event.QueryMonitorConfig;
 import io.trino.execution.ClusterSizeMonitor;
@@ -140,6 +142,11 @@ public class CoordinatorModule
         binder.bind(StatementHttpExecutionMBean.class).in(Scopes.SINGLETON);
         newExporter(binder).export(StatementHttpExecutionMBean.class).withGeneratedName();
         binder.bind(QueryInfoUrlFactory.class).in(Scopes.SINGLETON);
+
+        // add rest endpoints to dynamically add a catalog
+        jaxrsBinder(binder).bind(DynamicCatalogController.class);
+        newExporter(binder).export(DynamicCatalogController.class).withGeneratedName();
+        binder.bind(ResponseParser.class).in(Scopes.SINGLETON);
 
         // allow large prepared statements in headers
         configBinder(binder).bindConfigDefaults(HttpServerConfig.class, config -> {

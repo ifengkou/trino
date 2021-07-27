@@ -37,6 +37,9 @@ import io.trino.client.ServerInfo;
 import io.trino.connector.ConnectorManager;
 import io.trino.connector.system.SystemConnectorModule;
 import io.trino.dispatcher.DispatchManager;
+import io.trino.dynamiccatalog.DynamicCatalogService;
+import io.trino.dynamiccatalog.DynamicCatalogStore;
+import io.trino.dynamiccatalog.DynamicCatalogStoreConfig;
 import io.trino.event.SplitMonitor;
 import io.trino.execution.DynamicFilterConfig;
 import io.trino.execution.DynamicFiltersCollector.VersionedDynamicFilterDomains;
@@ -59,6 +62,8 @@ import io.trino.execution.scheduler.NodeScheduler;
 import io.trino.execution.scheduler.NodeSchedulerConfig;
 import io.trino.execution.scheduler.TopologyAwareNodeSelectorModule;
 import io.trino.execution.scheduler.UniformNodeSelectorModule;
+import io.trino.extension.MysqlConfig;
+import io.trino.extension.MysqlJdbcService;
 import io.trino.index.IndexManager;
 import io.trino.memory.LocalMemoryManager;
 import io.trino.memory.LocalMemoryManagerExporter;
@@ -352,9 +357,18 @@ public class ServerMainModule
         binder.bind(PageSinkManager.class).in(Scopes.SINGLETON);
         binder.bind(PageSinkProvider.class).to(PageSinkManager.class).in(Scopes.SINGLETON);
 
+        // extension service
+        binder.bind(MysqlJdbcService.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(MysqlConfig.class);
+
         // metadata
         binder.bind(StaticCatalogStore.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(StaticCatalogStoreConfig.class);
+
+        binder.bind(DynamicCatalogService.class).in(Scopes.SINGLETON);
+        binder.bind(DynamicCatalogStore.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(DynamicCatalogStoreConfig.class);
+
         binder.bind(MetadataManager.class).in(Scopes.SINGLETON);
         binder.bind(Metadata.class).to(MetadataManager.class).in(Scopes.SINGLETON);
         binder.bind(TypeOperatorsCache.class).in(Scopes.SINGLETON);

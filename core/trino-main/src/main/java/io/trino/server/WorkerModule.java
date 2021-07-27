@@ -17,6 +17,8 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import io.trino.dynamiccatalog.DynamicCatalogController;
+import io.trino.dynamiccatalog.ResponseParser;
 import io.trino.execution.QueryManager;
 import io.trino.execution.resourcegroups.NoOpResourceGroupManager;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
@@ -30,6 +32,8 @@ import io.trino.transaction.TransactionManager;
 import javax.inject.Singleton;
 
 import static com.google.common.reflect.Reflection.newProxy;
+import static io.airlift.jaxrs.JaxrsBinder.jaxrsBinder;
+import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
 public class WorkerModule
         implements Module
@@ -53,6 +57,11 @@ public class WorkerModule
         binder.bind(QueryManager.class).toInstance(newProxy(QueryManager.class, (proxy, method, args) -> {
             throw new UnsupportedOperationException();
         }));
+
+        // add rest endpoints to dynamically add a catalog
+        jaxrsBinder(binder).bind(DynamicCatalogController.class);
+        newExporter(binder).export(DynamicCatalogController.class).withGeneratedName();
+        binder.bind(ResponseParser.class).in(Scopes.SINGLETON);
 
         binder.bind(WebUiAuthenticationFilter.class).to(NoWebUiAuthenticationFilter.class).in(Scopes.SINGLETON);
     }
