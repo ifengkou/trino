@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.extension;
+package io.trino.plugin.base.extension;
 
 import io.airlift.configuration.Config;
 
@@ -19,7 +19,7 @@ import io.airlift.configuration.Config;
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/7/26
  */
-public class MysqlConfig
+public class JdbcConfig
 {
     private boolean enable;
     private String driverClassName;
@@ -33,8 +33,8 @@ public class MysqlConfig
         return enable;
     }
 
-    @Config("trino.extension.mysql.enable")
-    public MysqlConfig setEnable(boolean enable)
+    @Config("trino.extension.jdbc.enable")
+    public JdbcConfig setEnable(boolean enable)
     {
         this.enable = enable;
         return this;
@@ -45,8 +45,8 @@ public class MysqlConfig
         return driverClassName;
     }
 
-    @Config("trino.extension.mysql.driver")
-    public MysqlConfig setDriverClassName(String driverClassName)
+    @Config("trino.extension.jdbc.driver")
+    public JdbcConfig setDriverClassName(String driverClassName)
     {
         this.driverClassName = driverClassName;
         return this;
@@ -57,8 +57,8 @@ public class MysqlConfig
         return jdbcUrl;
     }
 
-    @Config("trino.extension.mysql.url")
-    public MysqlConfig setJdbcUrl(String jdbcUrl)
+    @Config("trino.extension.jdbc.url")
+    public JdbcConfig setJdbcUrl(String jdbcUrl)
     {
         this.jdbcUrl = jdbcUrl;
         return this;
@@ -69,8 +69,8 @@ public class MysqlConfig
         return userName;
     }
 
-    @Config("trino.extension.mysql.username")
-    public MysqlConfig setUserName(String userName)
+    @Config("trino.extension.jdbc.username")
+    public JdbcConfig setUserName(String userName)
     {
         this.userName = userName;
         return this;
@@ -81,8 +81,8 @@ public class MysqlConfig
         return password;
     }
 
-    @Config("trino.extension.mysql.password")
-    public MysqlConfig setPassword(String password)
+    @Config("trino.extension.jdbc.password")
+    public JdbcConfig setPassword(String password)
     {
         this.password = password;
         return this;
@@ -93,8 +93,8 @@ public class MysqlConfig
         return maxPoolSize;
     }
 
-    @Config("trino.extension.mysql.max-pool-size")
-    public MysqlConfig setMaxPoolSize(int maxPoolSize)
+    @Config("trino.extension.jdbc.max-pool-size")
+    public JdbcConfig setMaxPoolSize(int maxPoolSize)
     {
         this.maxPoolSize = maxPoolSize;
         return this;

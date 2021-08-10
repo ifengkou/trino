@@ -11,38 +11,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.extension;
+package io.trino.plugin.base.extension;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.airlift.log.Logger;
 
 /**
- * Recommended use MysqlJdbcService
+ * Recommended use MysqlJdbcProvider
  *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/7/14
  */
-public class MysqlJdbcUtil
-        extends BaseJdbcService
+public class JdbcUtil
 {
-    private static final Logger log = Logger.get(MysqlJdbcUtil.class);
+    private static final Logger log = Logger.get(JdbcUtil.class);
 
-    private static MysqlJdbcUtil instance;
+    public HikariDataSource dataSource;
+    public boolean enable;
+    private static JdbcUtil instance;
 
-    public static final MysqlJdbcUtil getInstance(HikariConfig hikariConfig)
+    public static final JdbcUtil getInstance(HikariConfig hikariConfig)
     {
         if (instance == null) {
-            synchronized (MysqlJdbcUtil.class) {
+            synchronized (JdbcUtil.class) {
                 if (instance == null) {
-                    instance = new MysqlJdbcUtil(hikariConfig);
+                    instance = new JdbcUtil(hikariConfig);
                 }
             }
         }
         return instance;
     }
 
-    private MysqlJdbcUtil(HikariConfig hikariConfig)
+    private JdbcUtil(HikariConfig hikariConfig)
     {
         try {
             dataSource = new HikariDataSource(hikariConfig);

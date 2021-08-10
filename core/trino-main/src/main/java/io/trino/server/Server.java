@@ -38,8 +38,8 @@ import io.airlift.log.Logger;
 import io.airlift.node.NodeModule;
 import io.airlift.tracetoken.TraceTokenModule;
 import io.trino.client.NodeVersion;
+import io.trino.dynamiccatalog.DynamicCatalogService;
 import io.trino.dynamiccatalog.DynamicCatalogStore;
-import io.trino.dynamiccatalog.DynamicCatalogStoreConfig;
 import io.trino.eventlistener.EventListenerManager;
 import io.trino.eventlistener.EventListenerModule;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
@@ -47,6 +47,7 @@ import io.trino.execution.warnings.WarningCollectorModule;
 import io.trino.metadata.Catalog;
 import io.trino.metadata.CatalogManager;
 import io.trino.metadata.StaticCatalogStore;
+import io.trino.plugin.base.extension.JdbcModule;
 import io.trino.security.AccessControlManager;
 import io.trino.security.AccessControlModule;
 import io.trino.security.GroupProviderManager;
@@ -105,6 +106,7 @@ public class Server
                 new ServerSecurityModule(),
                 new AccessControlModule(),
                 new EventListenerModule(),
+                new JdbcModule(),
                 new ServerMainModule(trinoVersion),
                 new GracefulShutdownModule(),
                 new WarningCollectorModule());
@@ -122,7 +124,8 @@ public class Server
 
             injector.getInstance(PluginManager.class).loadPlugins();
 
-            boolean enableDynamicCatalog = injector.getInstance(DynamicCatalogStoreConfig.class).isEnable();
+            //dynamic catalog logic
+            boolean enableDynamicCatalog = injector.getInstance(DynamicCatalogService.class).enable;
             if (enableDynamicCatalog) {
                 injector.getInstance(DynamicCatalogStore.class).loadCatalogs();
             }
@@ -186,6 +189,9 @@ public class Server
     protected Iterable<? extends Module> getAdditionalModules()
     {
         return ImmutableList.of();
+        /*ImmutableList.Builder<Module> additionalModules = ImmutableList.builder();
+        additionalModules.add(new JdbcModule());
+        return additionalModules.build();*/
     }
 
     private static void updateConnectorIds(Announcer announcer, CatalogManager metadata)

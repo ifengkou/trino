@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import io.airlift.http.client.HttpStatus;
 import io.airlift.log.Logger;
-import io.trino.extension.MysqlJdbcService;
+import io.trino.plugin.base.extension.JdbcProvider;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -51,7 +51,7 @@ public class DynamicCatalogService
 
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    private MysqlJdbcService mysqlJdbc;
+    private JdbcProvider jdbcProvider;
     public boolean enable;
     // load from properties?
     private static final String CATALOG_QUERY_SQL = "select catalogName,connectorName,properties from %s";
@@ -69,15 +69,16 @@ public class DynamicCatalogService
             .build();
 
     @Inject
-    public DynamicCatalogService(DynamicCatalogStoreConfig config, MysqlJdbcService mysqlJdbc)
+    public DynamicCatalogService(DynamicCatalogStoreConfig config, JdbcProvider jdbcProvider)
     {
-        this.enable = config.isEnable() && mysqlJdbc.enable;
+        log.info("-- DynamicCatalogService,config.enable=" + config.isEnable() + "jdbcProvider.enable=" + jdbcProvider.isEnable());
+        this.enable = config.isEnable() && jdbcProvider.isEnable();
         String tableName = config.getTableName();
         querySql = String.format(CATALOG_QUERY_SQL, tableName);
         insertSql = String.format(CATALOG_INSERT_SQL, tableName);
         deleteSql = String.format(CATALOG_DELETE_SQL, tableName);
         checkSql = String.format(CATALOG_CHECK_SQL, tableName);
-        this.mysqlJdbc = mysqlJdbc;
+        this.jdbcProvider = jdbcProvider;
     }
 
     /**
@@ -87,9 +88,11 @@ public class DynamicCatalogService
      */
     public List<Map<String, String>> loadCatalogsFromDb()
     {
-        requireNonNull(this.mysqlJdbc.dataSource, "dynamic catalog need 'extension.mysql' is enable");
+        if (!this.jdbcProvider.isEnable()) {
+            throw new RuntimeException("-- dynamic catalog need 'extension.mysql' is enable");
+        }
         List<Map<String, String>> catalogVos = new ArrayList<>(16);
-        this.mysqlJdbc.executeQuery(this.querySql, ((ResultSet rs) -> {
+        this.jdbcProvider.executeQuery(this.querySql, ((ResultSet rs) -> {
             while (rs.next()) {
                 String catalogName = rs.getString("catalogName");
                 String connectorName = rs.getString("connectorName");
@@ -118,7 +121,7 @@ public class DynamicCatalogService
         requireNonNull(catalogVo.getConnectorName(), "connectorName is null");
         Object[] params = new Object[] {catalogVo.catalogName};
         List<String> savedCatalog = new ArrayList<>(8);
-        this.mysqlJdbc.executeQuery(this.checkSql, params, ((ResultSet rs) -> {
+        this.jdbcProvider.executeQuery(this.checkSql, params, ((ResultSet rs) -> {
             while (rs.next()) {
                 String catalogName = rs.getString("catalogName");
                 savedCatalog.add(catalogName);
@@ -135,10 +138,12 @@ public class DynamicCatalogService
      */
     public boolean addCatalogToDb(CatalogVo catalogVo)
     {
-        requireNonNull(this.mysqlJdbc.dataSource, "dynamic catalog need 'extension.mysql' is enable");
+        if (!this.jdbcProvider.isEnable()) {
+            throw new RuntimeException("dynamic catalog need 'extension.mysql' is enable");
+        }
         boolean isExisted = checkCatalogExistedInDb(catalogVo);
         if (isExisted) {
-            log.error("Catalog " + catalogVo.getCatalogName() + " existed");
+            log.error("-- Catalog " + catalogVo.getCatalogName() + " existed");
             return false;
         }
         String properties = null;
@@ -153,7 +158,7 @@ public class DynamicCatalogService
         }
         properties = "".equals(properties) ? null : properties;
         Object[] params = new Object[] {catalogVo.catalogName, catalogVo.connectorName, properties};
-        return this.mysqlJdbc.execute(this.insertSql, params);
+        return this.jdbcProvider.execute(this.insertSql, params);
     }
 
     /**
@@ -164,9 +169,11 @@ public class DynamicCatalogService
      */
     public boolean deleteCatalogFromDb(String catalogName)
     {
-        requireNonNull(this.mysqlJdbc.dataSource, "dynamic catalog need 'trino.extension.mysql.enable=true'");
+        if (!this.jdbcProvider.isEnable()) {
+            throw new RuntimeException("dynamic catalog need 'extension.mysql' is enable");
+        }
         Object[] params = new Object[] {catalogName};
-        return this.mysqlJdbc.execute(this.deleteSql, params);
+        return this.jdbcProvider.execute(this.deleteSql, params);
     }
 
     public boolean noticeWorkerAddCatalog(URI workerUri, CatalogVo catalogVo)
@@ -177,12 +184,12 @@ public class DynamicCatalogService
             requestBody = objectMapper.writeValueAsString(catalogVo);
         }
         catch (JsonProcessingException e) {
-            log.error("Invalid catalogVo: " + e.getMessage());
+            log.error("-- noticeWorkerAddCatalog: Invalid catalogVo: " + e.getMessage());
             return false;
         }
         HttpUrl url = HttpUrl.get(workerUri);
         if (url == null) {
-            log.error("Invalid worker URL:" + workerUri);
+            log.error("-- noticeWorkerAddCatalog: Invalid worker URL:" + workerUri);
             return false;
         }
         url = url.newBuilder().encodedPath("/v1/catalog/add").build();
@@ -195,17 +202,17 @@ public class DynamicCatalogService
                 ResponseParser responseParser = objectMapper.readValue(responseBody, ResponseParser.class);
                 if (responseParser != null) {
                     if (responseParser.getStatusCode() == 200) {
-                        log.info("Successfully added catalog with " + workerUri);
+                        log.info("-- noticeWorkerAddCatalog: Successfully added catalog with " + workerUri);
                         return true;
                     }
                     else {
-                        log.error("Failed add catalog: " + responseBody);
+                        log.error("-- noticeWorkerAddCatalog: Failed add catalog: " + responseBody);
                     }
                 }
             }
         }
         catch (IOException e) {
-            log.error("Failed Call addCatalog API:" + e.getMessage());
+            log.error("-- noticeWorkerAddCatalog: Failed Call addCatalog API:" + e.getMessage());
         }
 
         return false;
@@ -220,7 +227,7 @@ public class DynamicCatalogService
         }
         url = url.newBuilder().encodedPath("/v1/catalog/delete")
                 .addQueryParameter("catalogName", catalogName).build();
-        log.info("noticeWorkerDeleteCatalog: request url is %s", url.toString());
+        log.info("-- noticeWorkerAddCatalog: request url is %s", url.toString());
         Request.Builder builder = new Request.Builder().url(url).delete();
         try (Response response = okHttpClient.newCall(builder.build()).execute()) {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -229,17 +236,17 @@ public class DynamicCatalogService
                 ResponseParser responseParser = objectMapper.readValue(responseBody, ResponseParser.class);
                 if (responseParser != null && responseParser.getStatusCode() == 200) {
                     if (responseParser.getStatusCode() == 200) {
-                        log.info("Successfully deleted catalog:{} ,with " + workerUri);
+                        log.info("-- noticeWorkerAddCatalog: Successfully deleted catalog:{} ,with " + workerUri);
                         return true;
                     }
                     else {
-                        log.error("Failed delete catalog: " + responseBody);
+                        log.error("-- noticeWorkerAddCatalog: Failed delete catalog: " + responseBody);
                     }
                 }
             }
         }
         catch (IOException e) {
-            log.error("Failed Call deleteCatalog API:" + e.getMessage());
+            log.error("-- noticeWorkerAddCatalog: Failed Call deleteCatalog API:" + e.getMessage());
         }
 
         return false;

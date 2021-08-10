@@ -52,7 +52,7 @@ import static io.airlift.discovery.client.ServiceAnnouncement.serviceAnnouncemen
 import static io.trino.server.security.ResourceSecurity.AccessType.PUBLIC;
 
 /**
- * https://github.com/prestodb/presto/pull/12605
+ * dynamically add/delete catalog
  *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/7/5
@@ -92,21 +92,21 @@ public class DynamicCatalogController
             if (!this.dynamicCatalogService.enable) {
                 return failedResponse(responseParser.build("DynamicCatalog is not enabled", 500));
             }
-            log.info("addCatalog() : Input values are " + catalogVo);
+            log.info("-- addCatalog() : Input values are " + catalogVo);
             InternalNode currentNode = this.internalNodeManager.getCurrentNode();
 
             // add catalog and updateConnectorIdAnnouncement
             CatalogName catalogName = createCatalog(catalogVo.getCatalogName(), catalogVo.getConnectorName(), catalogVo.getProperties());
-            log.info("addCatalog() : Successfully added catalog " + catalogName.getCatalogName());
+            log.info("-- addCatalog() : Successfully added catalog " + catalogName.getCatalogName());
 
             // save to db,then announce all worker
             if (currentNode.isCoordinator()) {
-                log.info("addCatalog() : execute coordinator logic:save to db,then announce all worker");
+                log.info("-- addCatalog() : Execute coordinator logic:save to db,then announce all worker");
                 // Coordinator logic
                 // add to  mysql catalog meta table
                 boolean saved = this.dynamicCatalogService.addCatalogToDb(catalogVo);
                 if (!saved) {
-                    log.error("addCatalog() ： Error saving catalog to db.");
+                    log.error("-- addCatalog() ： Error saving catalog to db.");
                     //not breaking;
                 }
                 // find all node
@@ -117,7 +117,7 @@ public class DynamicCatalogController
                     CountDownLatch latch = new CountDownLatch(activeNodes.size());
                     Map<URI, Boolean> noticeResult = new HashMap<>(activeNodes.size());
                     for (InternalNode node : activeNodes) {
-                        log.info("addCatalog: Announce node=%s,uri=%s", node.getNodeIdentifier(), node.getInternalUri());
+                        log.info("-- addCatalog: Announce node=%s,uri=%s", node.getNodeIdentifier(), node.getInternalUri());
                         executor.execute(() -> {
                             boolean noticeSuccess = dynamicCatalogService.noticeWorkerAddCatalog(node.getInternalUri(), catalogVo);
                             noticeResult.put(node.getInternalUri(), noticeSuccess);
@@ -129,7 +129,7 @@ public class DynamicCatalogController
                     // Try again
                     noticeResult.keySet().stream().forEach((k) -> {
                         if (!noticeResult.get(k)) {
-                            log.info("addCatalog: Announce node again,uri=" + k.getHost());
+                            log.info("-- addCatalog: Announce node again,uri=" + k.getHost());
                             dynamicCatalogService.noticeWorkerAddCatalog(k, catalogVo);
                         }
                     });
@@ -140,7 +140,7 @@ public class DynamicCatalogController
             return successResponse(responseParser.build("Successfully added catalog: " + catalogVo.getCatalogName(), 200));
         }
         catch (Exception ex) {
-            log.error("addCatalog() : Error adding catalog " + ex.getMessage());
+            log.error("-- addCatalog() : Error adding catalog " + ex.getMessage());
             return failedResponse(responseParser.build("Error adding Catalog: " + ex.getMessage(), 500));
         }
     }
@@ -155,11 +155,11 @@ public class DynamicCatalogController
         if (!this.dynamicCatalogService.enable) {
             return failedResponse(responseParser.build("DynamicCatalog is not enabled", 500));
         }
-        log.info("deleteCatalog : catalogName = " + catalogName);
+        log.info("-- deleteCatalog : catalogName = " + catalogName);
         InternalNode currentNode = this.internalNodeManager.getCurrentNode();
         if (currentNode.isCoordinator()) {
             // Coordinator logic
-            log.info("deleteCatalog : execute coordinator logic: save to db,then announce all worker");
+            log.info("-- deleteCatalog : Execute coordinator logic: delete from db,then announce all worker");
             // delete to  mysql catalog meta table
             this.dynamicCatalogService.deleteCatalogFromDb(catalogName);
             // find all node
@@ -170,7 +170,7 @@ public class DynamicCatalogController
                 CountDownLatch latch = new CountDownLatch(activeNodes.size());
                 Map<URI, Boolean> noticeResult = new HashMap<>(activeNodes.size());
                 for (InternalNode node : activeNodes) {
-                    log.info("deleteCatalog: announce node=%s,uri=%s", node.getNodeIdentifier(), node.getInternalUri());
+                    log.info("-- deleteCatalog: Announce node=%s,uri=%s", node.getNodeIdentifier(), node.getInternalUri());
                     executor.execute(() -> {
                         boolean noticeSuccess = dynamicCatalogService.noticeWorkerDeleteCatalog(node.getInternalUri(), catalogName);
                         noticeResult.put(node.getInternalUri(), noticeSuccess);
@@ -181,29 +181,29 @@ public class DynamicCatalogController
                     latch.await();
                 }
                 catch (InterruptedException e) {
-                    log.error("deleteCatalog: " + e.getMessage());
+                    log.error("-- deleteCatalog: " + e.getMessage());
                 }
                 //TODO Exception handle: rollback
                 noticeResult.keySet().stream().forEach((k) -> {
                     if (!noticeResult.get(k)) {
-                        log.info("deleteCatalog: Announce node again,uri=" + k.getHost());
+                        log.info("-- deleteCatalog: Announce node again,uri=" + k.getHost());
                         dynamicCatalogService.noticeWorkerDeleteCatalog(k, catalogName);
                     }
                 });
             }
         }
-        log.info("deleteCatalog(): Deleting catalog: " + catalogName);
+        log.info("-- deleteCatalog(): Deleting catalog: " + catalogName);
         String responseMessage = "";
         if (catalogManager.getCatalog(catalogName).isPresent()) {
-            log.info("deleteCatalog() : Catalog exists so deleting catalog " + catalogName);
+            log.info("-- deleteCatalog() : Catalog exists so deleting catalog " + catalogName);
             connectorManager.dropConnection(catalogName);
             responseMessage = "Successfully deleted";
         }
         else {
-            log.info("deleteCatalog() : Catalog doesn't exists, Can't be deleted " + catalogName);
+            log.info("-- deleteCatalog() : Catalog doesn't exists, Can't be deleted " + catalogName);
             return failedResponse(responseParser.build("Catalog doesn't exists: " + catalogName, 500));
         }
-        log.info("deleteCatalog() : successfully deleted catalog " + catalogName);
+        log.info("-- deleteCatalog() : Successfully deleted catalog " + catalogName);
         return successResponse(responseParser.build(responseMessage + " : " + catalogName, 200));
     }
 

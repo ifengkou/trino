@@ -11,30 +11,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.extension;
+package io.trino.plugin.base.extension;
 
+import com.google.inject.Inject;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.airlift.log.Logger;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
  * JDBC base functions
+ *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/7/14
  */
-public abstract class BaseJdbcService
+public class BaseJdbcProvider
+        implements JdbcProvider
 {
-    private static final Logger log = Logger.get(BaseJdbcService.class);
-    public HikariDataSource dataSource;
+    private static final Logger log = Logger.get(BaseJdbcProvider.class);
+
+    private JdbcConfig config;
+
+    private HikariDataSource dataSource;
     public boolean enable;
 
+    @Inject
+    public BaseJdbcProvider(JdbcConfig jdbcConfig)
+    {
+        this.config = jdbcConfig;
+        if (this.config.isEnable()) {
+            HikariConfig hikariConfig = new HikariConfig();
+            hikariConfig.setDriverClassName(config.getDriverClassName());
+            hikariConfig.setJdbcUrl(config.getJdbcUrl());
+            hikariConfig.setUsername(config.getUserName());
+            hikariConfig.setPassword(config.getPassword());
+            hikariConfig.setMaximumPoolSize(config.getMaxPoolSize());
+            if (config.getJdbcUrl().contains("mysql")) {
+                hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
+                hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
+                hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+                hikariConfig.addDataSourceProperty("useServerPrepStmts", true);
+            }
+            this.dataSource = new HikariDataSource(hikariConfig);
+            this.enable = true;
+            log.info("--- Trino Extension: Add BaseJdbcProvider ---");
+        }
+        else {
+            this.dataSource = null;
+            this.enable = false;
+        }
+    }
+
+    public boolean isEnable()
+    {
+        return this.enable == true && this.dataSource != null;
+    }
+
     /**
-     * 获取 Connection
+     * get Connection
      *
      * @return
      */
@@ -51,7 +92,6 @@ public abstract class BaseJdbcService
     }
 
     public int executeUpdate(String sql)
-            throws Exception
     {
         Connection conn = null;
         Statement state = null;
@@ -64,32 +104,16 @@ public abstract class BaseJdbcService
         }
         catch (Exception e) {
             log.error(e, e.getMessage());
-            throw e;
+            throw new RuntimeException("executeUpdate error", e);
         }
         finally {
-            if (state != null) {
-                try {
-                    state.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
+            closeJdbcSession(null, state, null, conn);
         }
         return rs;
     }
 
     /**
-     * 执行查询SQL语句
+     * executeQuery
      *
      * @param sql sql
      * @param callback callback
@@ -111,32 +135,7 @@ public abstract class BaseJdbcService
             throw new RuntimeException("executeQuery error", e);
         }
         finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-
-            if (state != null) {
-                try {
-                    state.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
+            closeJdbcSession(rs, state, null, conn);
         }
     }
 
@@ -166,32 +165,7 @@ public abstract class BaseJdbcService
             throw new RuntimeException("executeQuery error", e);
         }
         finally {
-            if (rs != null) {
-                try {
-                    rs.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-
-            if (ps != null) {
-                try {
-                    ps.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
+            closeJdbcSession(rs, null, ps, conn);
         }
     }
 
@@ -211,22 +185,7 @@ public abstract class BaseJdbcService
             log.error(e, e.getMessage());
         }
         finally {
-            if (state != null) {
-                try {
-                    state.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
+            closeJdbcSession(null, state, null, conn);
         }
         return success;
     }
@@ -249,32 +208,74 @@ public abstract class BaseJdbcService
             log.error(e, e.getMessage());
         }
         finally {
-            if (ps != null) {
-                try {
-                    ps.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    log.error(e, e.getMessage());
-                }
-            }
+            closeJdbcSession(null, null, ps, conn);
         }
         return success;
     }
 
-    /**
-     * callback interface
-     */
-    public interface QueryCallback
+    public void streamQuery(String sql, int fetchSize, StreamQueryCallback callback)
     {
-        void process(ResultSet rs)
-                throws Exception;
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            connection = this.getConnection();
+            ps = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            ps.setFetchSize(fetchSize);
+            rs = ps.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            callback.process(rsmd, rs);
+        }
+        catch (SQLException e) {
+            log.error(e.getMessage());
+        }
+        catch (IOException e) {
+            log.error(e.getMessage());
+        }
+        catch (Exception e) {
+            log.error(e, e.getMessage());
+        }
+        finally {
+            closeJdbcSession(rs, null, ps, connection);
+        }
+    }
+
+    private void closeJdbcSession(ResultSet rs, Statement st, PreparedStatement ps, Connection conn)
+    {
+        if (rs != null) {
+            try {
+                rs.close();
+            }
+            catch (SQLException e) {
+                log.error(e, e.getMessage());
+            }
+        }
+
+        if (st != null) {
+            try {
+                st.close();
+            }
+            catch (SQLException e) {
+                log.error(e, e.getMessage());
+            }
+        }
+
+        if (ps != null) {
+            try {
+                ps.close();
+            }
+            catch (SQLException e) {
+                log.error(e, e.getMessage());
+            }
+        }
+
+        if (conn != null) {
+            try {
+                conn.close();
+            }
+            catch (SQLException e) {
+                log.error(e, e.getMessage());
+            }
+        }
     }
 }

@@ -55,7 +55,7 @@ public class DynamicCatalogStore
         }
         log.info("-- Loading catalog from db --");
         List<Map<String, String>> catalogVos = this.dynamicCatalogService.loadCatalogsFromDb();
-        log.info("-- start load catalog, total %d catalog--", catalogVos.size());
+        log.info("-- Start load catalog, total %d catalog--", catalogVos.size());
         for (Map<String, String> catalogMap : catalogVos) {
             loadCatalog(catalogMap);
         }

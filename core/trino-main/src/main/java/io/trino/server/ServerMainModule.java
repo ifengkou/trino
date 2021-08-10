@@ -62,8 +62,6 @@ import io.trino.execution.scheduler.NodeScheduler;
 import io.trino.execution.scheduler.NodeSchedulerConfig;
 import io.trino.execution.scheduler.TopologyAwareNodeSelectorModule;
 import io.trino.execution.scheduler.UniformNodeSelectorModule;
-import io.trino.extension.MysqlConfig;
-import io.trino.extension.MysqlJdbcService;
 import io.trino.index.IndexManager;
 import io.trino.memory.LocalMemoryManager;
 import io.trino.memory.LocalMemoryManagerExporter;
@@ -358,8 +356,8 @@ public class ServerMainModule
         binder.bind(PageSinkProvider.class).to(PageSinkManager.class).in(Scopes.SINGLETON);
 
         // extension service
-        binder.bind(MysqlJdbcService.class).in(Scopes.SINGLETON);
-        configBinder(binder).bindConfig(MysqlConfig.class);
+        /*binder.bind(MysqlJdbcProvider.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(MysqlConfig.class);*/
 
         // metadata
         binder.bind(StaticCatalogStore.class).in(Scopes.SINGLETON);

@@ -239,7 +239,7 @@
             <artifactId>re2j-td</artifactId>
         </dependency>
         <!-- 3rd part for dynamic catalog -->
-        <dependency>
+        <!--<dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <exclusions>
@@ -248,7 +248,7 @@
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>commons-codec</groupId>
@@ -296,10 +296,10 @@
             <artifactId>joda-time</artifactId>
         </dependency>
 
-        <dependency>
+        <!--<dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>org.apache.commons</groupId>
