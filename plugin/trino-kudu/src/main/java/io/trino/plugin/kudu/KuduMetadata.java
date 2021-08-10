@@ -79,10 +79,13 @@ public class KuduMetadata
 {
     private final KuduClientSession clientSession;
 
+    private final KuduExtensionProvider extensionProvider;
+
     @Inject
-    public KuduMetadata(KuduClientSession clientSession)
+    public KuduMetadata(KuduClientSession clientSession, KuduExtensionProvider kuduExtensionProvider)
     {
         this.clientSession = requireNonNull(clientSession, "clientSession is null");
+        this.extensionProvider = kuduExtensionProvider;
     }
 
     @Override
@@ -121,7 +124,7 @@ public class KuduMetadata
         return columns.build();
     }
 
-    private ColumnMetadata getColumnMetadata(ColumnSchema column)
+    private ColumnMetadata getColumnMetadata(ColumnSchema column, Map<String, Type> specialColsMap)
     {
         Map<String, Object> properties = new LinkedHashMap<>();
         StringBuilder extra = new StringBuilder();
@@ -147,7 +150,14 @@ public class KuduMetadata
         }
         extra.append("compression=").append(compression);
 
-        Type prestoType = TypeHelper.fromKuduColumn(column);
+        //Type prestoType = TypeHelper.fromKuduColumn(column);\
+        Type prestoType;
+        if (specialColsMap.containsKey(column.getName())) {
+            prestoType = specialColsMap.get(column.getName());
+        }
+        else {
+            prestoType = TypeHelper.fromKuduColumn(column);
+        }
         return ColumnMetadata.builder()
                 .setName(column.getName())
                 .setType(prestoType)
@@ -161,9 +171,16 @@ public class KuduMetadata
         KuduTable table = tableHandle.getTable(clientSession);
         Schema schema = table.getSchema();
 
+        // search the column name of array and decimal type.
+        String schemaName = tableHandle.getSchemaTableName().getSchemaName();
+        String tableName = tableHandle.getSchemaTableName().getTableName();
+        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadAryDcmColsFromMetaDB(
+                schemaName, tableName);
+
         List<ColumnMetadata> columnsMetaList = schema.getColumns().stream()
                 .filter(column -> !column.isKey() || !column.getName().equals(KuduColumnHandle.ROW_ID))
-                .map(this::getColumnMetadata)
+                //.map(this::getColumnMetadata)
+                .map(column -> getColumnMetadata(column, specialColsMap))
                 .collect(toImmutableList());
 
         Map<String, Object> properties = clientSession.getTableProperties(tableHandle);
@@ -176,11 +193,23 @@ public class KuduMetadata
         KuduTableHandle tableHandle = (KuduTableHandle) connectorTableHandle;
         Schema schema = clientSession.getTableSchema(tableHandle);
 
+        String schemaName = tableHandle.getSchemaTableName().getSchemaName();
+        String tableName = tableHandle.getSchemaTableName().getTableName();
+        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadAryDcmColsFromMetaDB(
+                schemaName, tableName);
+
         ImmutableMap.Builder<String, ColumnHandle> columnHandles = ImmutableMap.builder();
         for (int ordinal = 0; ordinal < schema.getColumnCount(); ordinal++) {
             ColumnSchema col = schema.getColumnByIndex(ordinal);
             String name = col.getName();
-            Type type = TypeHelper.fromKuduColumn(col);
+            //Type type = TypeHelper.fromKuduColumn(col);
+            Type type;
+            if (specialColsMap.containsKey(col.getName())) {
+                type = specialColsMap.get(col.getName());
+            }
+            else {
+                type = TypeHelper.fromKuduColumn(col);
+            }
             KuduColumnHandle columnHandle = new KuduColumnHandle(name, ordinal, type);
             columnHandles.put(name, columnHandle);
         }
@@ -326,9 +355,21 @@ public class KuduMetadata
         KuduTable table = tableHandle.getTable(clientSession);
         Schema schema = table.getSchema();
 
+        String schemaName = tableHandle.getSchemaTableName().getSchemaName();
+        String tableName = tableHandle.getSchemaTableName().getTableName();
+        Map<String, Type> specialColumnMap = extensionProvider.loadAryDcmColsFromMetaDB(schemaName, tableName);
+
         List<ColumnSchema> columns = schema.getColumns();
         List<Type> columnTypes = columns.stream()
-                .map(TypeHelper::fromKuduColumn).collect(toImmutableList());
+                //.map(TypeHelper::fromKuduColumn)
+                .map(column -> {
+                    Type prestoType = specialColumnMap.get(column.getName());
+                    if (prestoType == null) {
+                        prestoType = TypeHelper.fromKuduColumn(column);
+                    }
+                    return prestoType;
+                })
+                .collect(toImmutableList());
 
         return new KuduInsertTableHandle(
                 tableHandle.getSchemaTableName(),

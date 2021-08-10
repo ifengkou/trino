@@ -19,8 +19,15 @@ import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.trino.spi.TrinoException;
+import io.trino.spi.block.Block;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.PageBuilderStatus;
 import io.trino.spi.connector.RecordCursor;
+import io.trino.spi.type.DoubleType;
+import io.trino.spi.type.StandardTypes;
 import io.trino.spi.type.Type;
+import io.trino.spi.type.TypeUtils;
+import io.trino.spi.type.VarcharType;
 import org.apache.kudu.client.KeyEncoderAccessor;
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduScanner;
@@ -30,10 +37,12 @@ import org.apache.kudu.client.RowResult;
 import org.apache.kudu.client.RowResultIterator;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import static io.trino.plugin.kudu.KuduColumnHandle.ROW_ID_POSITION;
+import static io.trino.plugin.kudu.KuduExtensionProvider.ARRAY_STRING_SPLITTER;
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static java.util.Objects.requireNonNull;
 
@@ -188,7 +197,41 @@ public class KuduRecordCursor
     public Object getObject(int field)
     {
         int index = mapping(field);
+        Type type = getType(field);
+        if (type.getTypeSignature().getBase().equals(StandardTypes.ARRAY)) {
+            String fieldValue = (String) TypeHelper.getObject(VarcharType.VARCHAR, currentRow, index);
+            return getArray(fieldValue, type);
+        }
+        // array type logic
         return TypeHelper.getObject(columnTypes.get(field), currentRow, index);
+    }
+
+    /**
+     * split into arrays
+     *
+     * @param type type
+     * @return array block
+     */
+    private static Block getArray(String fieldValue, Type type)
+    {
+        if (fieldValue == null || "".equals(fieldValue)) {
+            PageBuilderStatus pageBuilderStatus = new PageBuilderStatus();
+            return type.createBlockBuilder(pageBuilderStatus.createBlockBuilderStatus(), 0).build();
+        }
+        String[] values = fieldValue.split(ARRAY_STRING_SPLITTER);
+        Type elementType = type.getTypeParameters().get(0);
+        BlockBuilder builder = elementType.createBlockBuilder(null, values.length);
+        Arrays.stream(values).forEach(value -> {
+            if (value != null && !"".equals(value)) {
+                if (DoubleType.DOUBLE.equals(elementType)) {
+                    TypeUtils.writeNativeValue(elementType, builder, Double.valueOf(value));
+                }
+                else {
+                    TypeUtils.writeNativeValue(elementType, builder, value);
+                }
+            }
+        });
+        return builder.build();
     }
 
     @Override

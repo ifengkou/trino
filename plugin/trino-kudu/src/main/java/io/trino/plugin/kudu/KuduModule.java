@@ -20,6 +20,9 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import io.trino.plugin.base.classloader.ClassLoaderSafeNodePartitioningProvider;
 import io.trino.plugin.base.classloader.ForClassLoaderSafe;
+import io.trino.plugin.base.extension.BaseJdbcProvider;
+import io.trino.plugin.base.extension.JdbcConfig;
+import io.trino.plugin.base.extension.JdbcProvider;
 import io.trino.plugin.kudu.procedures.RangePartitionProcedures;
 import io.trino.plugin.kudu.properties.KuduTableProperties;
 import io.trino.plugin.kudu.schema.NoSchemaEmulation;
@@ -52,6 +55,12 @@ public class KuduModule
     protected void configure()
     {
         bind(TypeManager.class).toInstance(typeManager);
+
+        bind(JdbcProvider.class).to(BaseJdbcProvider.class).in(Scopes.SINGLETON);
+        configBinder(binder()).bindConfig(JdbcConfig.class);
+
+        bind(KuduExtensionProvider.class).in(Scopes.SINGLETON);
+        configBinder(binder()).bindConfig(KuduExtensionConfig.class);
 
         bind(KuduConnector.class).in(Scopes.SINGLETON);
         bind(KuduMetadata.class).in(Scopes.SINGLETON);

@@ -19,11 +19,16 @@ import com.google.common.primitives.SignedBytes;
 import io.airlift.slice.Slice;
 import io.trino.spi.Page;
 import io.trino.spi.block.Block;
+import io.trino.spi.block.DictionaryBlock;
+import io.trino.spi.block.LongArrayBlock;
+import io.trino.spi.block.VariableWidthBlock;
 import io.trino.spi.connector.ConnectorPageSink;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.type.DecimalType;
+import io.trino.spi.type.DoubleType;
 import io.trino.spi.type.SqlDate;
 import io.trino.spi.type.SqlDecimal;
+import io.trino.spi.type.StandardTypes;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.VarcharType;
 import org.apache.kudu.client.KuduException;
@@ -43,6 +48,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static io.trino.plugin.kudu.KuduExtensionProvider.ARRAY_STRING_SPLITTER;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.DateType.DATE;
@@ -139,7 +145,10 @@ public class KuduPageSink
         Block block = page.getBlock(channel);
         Type type = columnTypes.get(destChannel);
         if (block.isNull(position)) {
-            row.setNull(destChannel);
+            /**
+             * fix insert
+             */
+            //row.setNull(destChannel);
         }
         else if (TIMESTAMP_MILLIS.equals(type)) {
             row.addLong(destChannel, truncateEpochMicrosToMillis(type.getLong(block, position)));
@@ -183,6 +192,36 @@ public class KuduPageSink
         else if (type instanceof DecimalType) {
             SqlDecimal sqlDecimal = (SqlDecimal) type.getObjectValue(connectorSession, block, position);
             row.addDecimal(destChannel, sqlDecimal.toBigDecimal());
+        }
+        else if (type.getTypeSignature().getBase().equals(StandardTypes.ARRAY)) {
+            Object obj = type.getObject(block, position);
+            Block vBlock;
+            Type elementType = type.getTypeParameters().get(0);
+            if (obj instanceof VariableWidthBlock) {
+                vBlock = (VariableWidthBlock) obj;
+            }
+            else if (obj instanceof DictionaryBlock) {
+                vBlock = (DictionaryBlock) obj;
+            }
+            else {
+                vBlock = (LongArrayBlock) obj;
+            }
+            StringBuilder buff = new StringBuilder();
+            for (int i = 0; i < vBlock.getPositionCount(); i++) {
+                String value;
+                if (elementType.equals(DoubleType.DOUBLE)) {
+                    value = String.valueOf(elementType.getDouble(vBlock, i));
+                }
+                else {
+                    Slice slice = vBlock.getSlice(i, 0, vBlock.getSliceLength(i));
+                    value = slice.toStringUtf8();
+                }
+                if (i > 0) {
+                    buff.append(ARRAY_STRING_SPLITTER);
+                }
+                buff.append(value);
+            }
+            row.addString(destChannel, buff.toString());
         }
         else {
             throw new UnsupportedOperationException("Type is not supported: " + type);
