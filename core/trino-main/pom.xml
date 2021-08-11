@@ -221,6 +221,7 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
         </dependency>
+
         <!-- used by dynamic catalog -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
@@ -239,7 +240,7 @@
             <artifactId>re2j-td</artifactId>
         </dependency>
         <!-- 3rd part for dynamic catalog -->
-        <!--<dependency>
+        <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <exclusions>
@@ -248,7 +249,7 @@
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>-->
+        </dependency>
 
         <dependency>
             <groupId>commons-codec</groupId>
@@ -296,11 +297,6 @@
             <artifactId>joda-time</artifactId>
         </dependency>
 
-        <!--<dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-        </dependency>-->
-
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
@@ -340,6 +336,14 @@
         <dependency>
             <groupId>org.weakref</groupId>
             <artifactId>jmxutils</artifactId>
+        </dependency>
+
+        <!-- used by jdbc provider extension -->
+        <!-- You can delete or replace it with another JDBC-->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- used by tests but also needed transitively -->

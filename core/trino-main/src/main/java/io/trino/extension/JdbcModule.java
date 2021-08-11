@@ -11,11 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.base.extension;
+package io.trino.extension;
 
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import io.airlift.log.Logger;
+import io.trino.spi.extension.JdbcProvider;
 
 import static io.airlift.configuration.ConfigBinder.configBinder;
 
@@ -26,9 +28,12 @@ import static io.airlift.configuration.ConfigBinder.configBinder;
 public class JdbcModule
         implements Module
 {
+    private static final Logger log = Logger.get(JdbcModule.class);
+
     @Override
     public void configure(Binder binder)
     {
+        log.info("--- init base jdbc provider ---");
         binder.bind(JdbcProvider.class).to(BaseJdbcProvider.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(JdbcConfig.class);
     }

@@ -18,11 +18,9 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import io.airlift.log.Logger;
 import io.trino.plugin.base.classloader.ClassLoaderSafeNodePartitioningProvider;
 import io.trino.plugin.base.classloader.ForClassLoaderSafe;
-import io.trino.plugin.base.extension.BaseJdbcProvider;
-import io.trino.plugin.base.extension.JdbcConfig;
-import io.trino.plugin.base.extension.JdbcProvider;
 import io.trino.plugin.kudu.procedures.RangePartitionProcedures;
 import io.trino.plugin.kudu.properties.KuduTableProperties;
 import io.trino.plugin.kudu.schema.NoSchemaEmulation;
@@ -32,6 +30,7 @@ import io.trino.spi.connector.ConnectorNodePartitioningProvider;
 import io.trino.spi.connector.ConnectorPageSinkProvider;
 import io.trino.spi.connector.ConnectorPageSourceProvider;
 import io.trino.spi.connector.ConnectorSplitManager;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.procedure.Procedure;
 import io.trino.spi.type.TypeManager;
 import org.apache.kudu.client.KuduClient;
@@ -44,20 +43,22 @@ import static java.util.Objects.requireNonNull;
 public class KuduModule
         extends AbstractModule
 {
-    private final TypeManager typeManager;
+    private static final Logger log = Logger.get(KuduModule.class);
 
-    public KuduModule(TypeManager typeManager)
+    private final TypeManager typeManager;
+    private final JdbcProvider jdbcProvider;
+
+    public KuduModule(TypeManager typeManager, JdbcProvider jdbcProvider)
     {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
+        this.jdbcProvider = jdbcProvider;
     }
 
     @Override
     protected void configure()
     {
         bind(TypeManager.class).toInstance(typeManager);
-
-        bind(JdbcProvider.class).to(BaseJdbcProvider.class).in(Scopes.SINGLETON);
-        configBinder(binder()).bindConfig(JdbcConfig.class);
+        bind(JdbcProvider.class).toInstance(jdbcProvider);
 
         bind(KuduExtensionProvider.class).in(Scopes.SINGLETON);
         configBinder(binder()).bindConfig(KuduExtensionConfig.class);

@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import io.airlift.http.client.HttpStatus;
 import io.airlift.log.Logger;
-import io.trino.plugin.base.extension.JdbcProvider;
+import io.trino.spi.extension.JdbcProvider;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -51,7 +51,7 @@ public class DynamicCatalogService
 
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    private JdbcProvider jdbcProvider;
+    private final JdbcProvider jdbcProvider;
     public boolean enable;
     // load from properties?
     private static final String CATALOG_QUERY_SQL = "select catalogName,connectorName,properties from %s";
@@ -71,7 +71,7 @@ public class DynamicCatalogService
     @Inject
     public DynamicCatalogService(DynamicCatalogStoreConfig config, JdbcProvider jdbcProvider)
     {
-        log.info("-- DynamicCatalogService,config.enable=" + config.isEnable() + "jdbcProvider.enable=" + jdbcProvider.isEnable());
+        log.info("-- DynamicCatalogService,config.enable=" + config.isEnable() + ",jdbcProvider.enable=" + jdbcProvider.isEnable());
         this.enable = config.isEnable() && jdbcProvider.isEnable();
         String tableName = config.getTableName();
         querySql = String.format(CATALOG_QUERY_SQL, tableName);

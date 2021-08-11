@@ -17,6 +17,7 @@ import io.trino.spi.NodeManager;
 import io.trino.spi.PageIndexerFactory;
 import io.trino.spi.PageSorter;
 import io.trino.spi.VersionEmbedder;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.type.TypeManager;
 
 public interface ConnectorContext
@@ -47,6 +48,17 @@ public interface ConnectorContext
     }
 
     default ClassLoader duplicatePluginClassLoader()
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * Avoid instantiating multiple JDBC connection pools
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    default JdbcProvider getJdbcProvider()
     {
         throw new UnsupportedOperationException();
     }

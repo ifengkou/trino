@@ -18,6 +18,7 @@ import io.trino.spi.PageIndexerFactory;
 import io.trino.spi.PageSorter;
 import io.trino.spi.VersionEmbedder;
 import io.trino.spi.connector.ConnectorContext;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.type.TypeManager;
 
 import java.util.function.Supplier;
@@ -33,6 +34,12 @@ public class ConnectorContextInstance
     private final PageSorter pageSorter;
     private final PageIndexerFactory pageIndexerFactory;
     private final Supplier<ClassLoader> duplicatePluginClassLoaderFactory;
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    private final JdbcProvider jdbcProvider;
 
     public ConnectorContextInstance(
             NodeManager nodeManager,
@@ -40,7 +47,8 @@ public class ConnectorContextInstance
             TypeManager typeManager,
             PageSorter pageSorter,
             PageIndexerFactory pageIndexerFactory,
-            Supplier<ClassLoader> duplicatePluginClassLoaderFactory)
+            Supplier<ClassLoader> duplicatePluginClassLoaderFactory,
+            JdbcProvider jdbcProvider)
     {
         this.nodeManager = requireNonNull(nodeManager, "nodeManager is null");
         this.versionEmbedder = requireNonNull(versionEmbedder, "versionEmbedder is null");
@@ -48,6 +56,7 @@ public class ConnectorContextInstance
         this.pageSorter = requireNonNull(pageSorter, "pageSorter is null");
         this.pageIndexerFactory = requireNonNull(pageIndexerFactory, "pageIndexerFactory is null");
         this.duplicatePluginClassLoaderFactory = requireNonNull(duplicatePluginClassLoaderFactory, "duplicatePluginClassLoaderFactory is null");
+        this.jdbcProvider = jdbcProvider;
     }
 
     @Override
@@ -84,5 +93,11 @@ public class ConnectorContextInstance
     public ClassLoader duplicatePluginClassLoader()
     {
         return duplicatePluginClassLoaderFactory.get();
+    }
+
+    @Override
+    public JdbcProvider getJdbcProvider()
+    {
+        return jdbcProvider;
     }
 }

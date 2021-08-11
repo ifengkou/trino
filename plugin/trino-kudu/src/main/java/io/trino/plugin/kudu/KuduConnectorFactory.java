@@ -51,7 +51,7 @@ public class KuduConnectorFactory
 
         Bootstrap app = new Bootstrap(
                 new JsonModule(),
-                new KuduModule(context.getTypeManager()),
+                new KuduModule(context.getTypeManager(), context.getJdbcProvider()),
                 binder -> binder.bind(ClassLoader.class).toInstance(KuduConnectorFactory.class.getClassLoader()));
 
         Injector injector = app

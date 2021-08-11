@@ -48,6 +48,7 @@ import io.trino.spi.connector.ConnectorRecordSetProvider;
 import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.SystemTable;
 import io.trino.spi.eventlistener.EventListener;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.procedure.Procedure;
 import io.trino.spi.session.PropertyMetadata;
 import io.trino.spi.type.TypeOperators;
@@ -106,6 +107,13 @@ public class ConnectorManager
     private final EventListenerManager eventListenerManager;
     private final TypeOperators typeOperators;
 
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    private final JdbcProvider jdbcProvider;
+
     private final boolean schedulerIncludeCoordinator;
 
     @GuardedBy("this")
@@ -135,7 +143,8 @@ public class ConnectorManager
             TransactionManager transactionManager,
             EventListenerManager eventListenerManager,
             TypeOperators typeOperators,
-            NodeSchedulerConfig nodeSchedulerConfig)
+            NodeSchedulerConfig nodeSchedulerConfig,
+            JdbcProvider jdbcProvider)
     {
         this.metadataManager = metadataManager;
         this.catalogManager = catalogManager;
@@ -155,6 +164,7 @@ public class ConnectorManager
         this.eventListenerManager = eventListenerManager;
         this.typeOperators = typeOperators;
         this.schedulerIncludeCoordinator = nodeSchedulerConfig.isIncludeCoordinator();
+        this.jdbcProvider = jdbcProvider;
     }
 
     @PreDestroy
@@ -355,7 +365,8 @@ public class ConnectorManager
                 new InternalTypeManager(metadataManager, typeOperators),
                 pageSorter,
                 pageIndexerFactory,
-                factory.getDuplicatePluginClassLoaderFactory());
+                factory.getDuplicatePluginClassLoaderFactory(),
+                jdbcProvider);
 
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(factory.getConnectorFactory().getClass().getClassLoader())) {
             return factory.getConnectorFactory().create(catalogName.getCatalogName(), properties, context);

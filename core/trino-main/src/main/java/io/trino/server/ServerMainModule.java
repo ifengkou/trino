@@ -355,14 +355,11 @@ public class ServerMainModule
         binder.bind(PageSinkManager.class).in(Scopes.SINGLETON);
         binder.bind(PageSinkProvider.class).to(PageSinkManager.class).in(Scopes.SINGLETON);
 
-        // extension service
-        /*binder.bind(MysqlJdbcProvider.class).in(Scopes.SINGLETON);
-        configBinder(binder).bindConfig(MysqlConfig.class);*/
-
         // metadata
         binder.bind(StaticCatalogStore.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(StaticCatalogStoreConfig.class);
 
+        // extension dynamic catalog service
         binder.bind(DynamicCatalogService.class).in(Scopes.SINGLETON);
         binder.bind(DynamicCatalogStore.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(DynamicCatalogStoreConfig.class);

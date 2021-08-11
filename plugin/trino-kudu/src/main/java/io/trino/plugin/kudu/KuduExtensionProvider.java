@@ -16,7 +16,7 @@ package io.trino.plugin.kudu;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import io.airlift.log.Logger;
-import io.trino.plugin.base.extension.JdbcProvider;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.DecimalType;
 import io.trino.spi.type.DoubleType;
@@ -46,7 +46,7 @@ public class KuduExtensionProvider
     @Inject
     public KuduExtensionProvider(JdbcProvider jdbcProvider, KuduExtensionConfig config)
     {
-        log.info("--kudu extension: Init KuduExtensionProvider");
+        log.info("--- kudu extension: Init KuduExtensionProvider");
         this.jdbcProvider = jdbcProvider;
         this.kuduExtensionConfig = config;
     }

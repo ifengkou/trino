@@ -11,12 +11,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.base.extension;
+package io.trino.extension;
 
 import com.google.inject.Inject;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.airlift.log.Logger;
+import io.trino.spi.extension.JdbcProvider;
+import io.trino.spi.extension.QueryCallback;
+import io.trino.spi.extension.StreamQueryCallback;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -37,10 +40,9 @@ public class BaseJdbcProvider
 {
     private static final Logger log = Logger.get(BaseJdbcProvider.class);
 
-    private JdbcConfig config;
-
     private HikariDataSource dataSource;
     public boolean enable;
+    private JdbcConfig config;
 
     @Inject
     public BaseJdbcProvider(JdbcConfig jdbcConfig)
@@ -61,7 +63,7 @@ public class BaseJdbcProvider
             }
             this.dataSource = new HikariDataSource(hikariConfig);
             this.enable = true;
-            log.info("--- Trino Extension: Add BaseJdbcProvider ---");
+            log.info("--- Trino Extension: Success Add BaseJdbcProvider ---");
         }
         else {
             this.dataSource = null;

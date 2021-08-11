@@ -11,17 +11,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.base.extension;
+package io.trino.spi.extension;
 
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 
 /**
+ * JDBC Query Callback Interface
+ *
  * @author shenlongguang https://github.com/ifengkou
- * @date: 2021/8/6
+ * @date: 2021/8/3
  */
-public interface StreamQueryCallback
+public interface QueryCallback
 {
-    void process(ResultSetMetaData rsmd, ResultSet rs)
+    void process(ResultSet rs)
             throws Exception;
 }

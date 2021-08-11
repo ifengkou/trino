@@ -11,16 +11,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.base.extension;
+package io.trino.spi.extension;
 
-import java.sql.ResultSet;
+import java.sql.Connection;
 
 /**
+ * Extended JDBC service
+ *
+ * It is convenient for Trino to obtain basic configuration or meta data from external components
+ *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/8/3
  */
-public interface QueryCallback
+public interface JdbcProvider
 {
-    void process(ResultSet rs)
-            throws Exception;
+    boolean isEnable();
+
+    Connection getConnection();
+
+    int executeUpdate(String sql);
+
+    void executeQuery(String sql, QueryCallback callback);
+
+    void executeQuery(String sql, Object[] data, QueryCallback callback);
+
+    boolean execute(String sql);
+
+    boolean execute(String sql, Object[] data);
+
+    void streamQuery(String sql, int fetchSize, StreamQueryCallback callback);
 }

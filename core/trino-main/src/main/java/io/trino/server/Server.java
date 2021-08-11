@@ -44,10 +44,10 @@ import io.trino.eventlistener.EventListenerManager;
 import io.trino.eventlistener.EventListenerModule;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
 import io.trino.execution.warnings.WarningCollectorModule;
+import io.trino.extension.JdbcModule;
 import io.trino.metadata.Catalog;
 import io.trino.metadata.CatalogManager;
 import io.trino.metadata.StaticCatalogStore;
-import io.trino.plugin.base.extension.JdbcModule;
 import io.trino.security.AccessControlManager;
 import io.trino.security.AccessControlModule;
 import io.trino.security.GroupProviderManager;
@@ -124,6 +124,11 @@ public class Server
 
             injector.getInstance(PluginManager.class).loadPlugins();
 
+            /**
+             * [feature] dynamic load catalogs from db
+             *
+             * 20210721 shenlongguang github.com/ifengkou
+             */
             //dynamic catalog logic
             boolean enableDynamicCatalog = injector.getInstance(DynamicCatalogService.class).enable;
             if (enableDynamicCatalog) {
