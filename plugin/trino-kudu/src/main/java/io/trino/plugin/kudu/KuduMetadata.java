@@ -174,7 +174,7 @@ public class KuduMetadata
         // search the column name of array and decimal type.
         String schemaName = tableHandle.getSchemaTableName().getSchemaName();
         String tableName = tableHandle.getSchemaTableName().getTableName();
-        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadAryDcmColsFromMetaDB(
+        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadSpecialColumns(
                 schemaName, tableName);
 
         List<ColumnMetadata> columnsMetaList = schema.getColumns().stream()
@@ -195,7 +195,7 @@ public class KuduMetadata
 
         String schemaName = tableHandle.getSchemaTableName().getSchemaName();
         String tableName = tableHandle.getSchemaTableName().getTableName();
-        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadAryDcmColsFromMetaDB(
+        ImmutableMap<String, Type> specialColsMap = extensionProvider.loadSpecialColumns(
                 schemaName, tableName);
 
         ImmutableMap.Builder<String, ColumnHandle> columnHandles = ImmutableMap.builder();
@@ -357,7 +357,7 @@ public class KuduMetadata
 
         String schemaName = tableHandle.getSchemaTableName().getSchemaName();
         String tableName = tableHandle.getSchemaTableName().getTableName();
-        Map<String, Type> specialColumnMap = extensionProvider.loadAryDcmColsFromMetaDB(schemaName, tableName);
+        Map<String, Type> specialColumnMap = extensionProvider.loadSpecialColumns(schemaName, tableName);
 
         List<ColumnSchema> columns = schema.getColumns();
         List<Type> columnTypes = columns.stream()

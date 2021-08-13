@@ -16,6 +16,8 @@ package io.trino.plugin.kudu;
 import io.airlift.configuration.Config;
 
 /**
+ * The kudu extension service configuration
+ *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/8/9
  */
@@ -24,6 +26,16 @@ public class KuduExtensionConfig
     private boolean isArrayEnable;
     private int decimalDefaultPrecision = 18;
     private int decimalDefaultScale = 3;
+    /**
+     * the schema prefix that  supports array data-type
+     * not all schema need to support array data-type
+     */
+    private String schemaPrefix;
+    /**
+     * the table prefix that  supports array data-type
+     * not all schema need to support array data-type
+     */
+    private String tablePrefix;
 
     public boolean isArrayEnable()
     {
@@ -58,6 +70,30 @@ public class KuduExtensionConfig
     public KuduExtensionConfig setDecimalDefaultScale(int decimalDefaultScale)
     {
         this.decimalDefaultScale = decimalDefaultScale;
+        return this;
+    }
+
+    public String getSchemaPrefix()
+    {
+        return schemaPrefix;
+    }
+
+    @Config("kudu.extension.array.schema.prefix")
+    public KuduExtensionConfig setSchemaPrefix(String schemaPrefix)
+    {
+        this.schemaPrefix = schemaPrefix;
+        return this;
+    }
+
+    public String getTablePrefix()
+    {
+        return tablePrefix;
+    }
+
+    @Config("kudu.extension.array.table.prefix")
+    public KuduExtensionConfig setTablePrefix(String tablePrefix)
+    {
+        this.tablePrefix = tablePrefix;
         return this;
     }
 }

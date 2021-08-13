@@ -26,6 +26,11 @@ import io.trino.spi.type.VarcharType;
 import java.sql.ResultSet;
 
 /**
+ * The kudu extension service provider
+ *
+ * 1. Support two array data type: array<string>,array<double>
+ * 2. Not use NULL to overwrite the original value when inserting part of the column
+ *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/8/4
  */
@@ -38,7 +43,7 @@ public class KuduExtensionProvider
     public static final String DATATYPE_NUMBER = "number";
     public static final String DATATYPE_ARRAY_STRING = "array<string>";
     public static final String ARRAY_STRING_SPLITTER = "\001";
-    public static final String ARRAY_DECIMAL_COLUMN_SQL = "select code, data_type from db_%s.td_base_attr_info where type='%s' and data_type in('array<string>', 'array<double>', 'number') ORDER BY id asc;";
+    public static final String ARRAY_DECIMAL_COLUMN_SQL = "select code, data_type from %s.td_base_attr_info where type='%s' and data_type in('array<string>', 'array<double>', 'number') ORDER BY id asc;";
 
     private final JdbcProvider jdbcProvider;
     private final KuduExtensionConfig kuduExtensionConfig;
@@ -58,40 +63,75 @@ public class KuduExtensionProvider
      * @param tableName
      * @return
      */
-    public ImmutableMap<String, Type> loadAryDcmColsFromMetaDB(String schemaName, String tableName)
+    public ImmutableMap<String, Type> loadSpecialColumns(String schemaName, String tableName)
     {
-        log.info("--kudu extension: loadAryDcmColsFromMetaDB");
+        log.info("--kudu extension: loadSpecialColumns");
         ImmutableMap.Builder<String, Type> specialColsMap = new ImmutableMap.Builder<>();
         if (!kuduExtensionConfig.isArrayEnable()) {
             return specialColsMap.build();
         }
-        if (!schemaName.contains("_")) {
+        if (!isSupportedArray(schemaName, kuduExtensionConfig.getSchemaPrefix())) {
             return specialColsMap.build();
         }
-        String prefix = schemaName.split("_")[0];
-        String appId = schemaName.substring(prefix.length() + 1);
-        String sql = String.format(ARRAY_DECIMAL_COLUMN_SQL, appId, tableName.startsWith("event") ? "event" : tableName);
-        log.info("--loadAryDcmColsFromMetaDB: sql=" + sql);
-        jdbcProvider.executeQuery(sql,
-                ((ResultSet rs) -> {
-                    while (rs.next()) {
-                        String fieldName = rs.getString(1);
-                        String fieldType = rs.getString(2);
-                        Type prestoType;
-                        if (DATATYPE_NUMBER.equals(fieldType)) {
-                            prestoType = DecimalType.createDecimalType(DECIMAL_DEFAULT_PRECISION, DECIMAL_DEFAULT_SCALE);
+
+        if (!isSupportedArray(tableName, kuduExtensionConfig.getTablePrefix())) {
+            return specialColsMap.build();
+        }
+        String tablePrefix = getPrefix(tableName, kuduExtensionConfig.getTablePrefix());
+        // The database in DB and the schema in kudu must have the same name
+        String sql = String.format(ARRAY_DECIMAL_COLUMN_SQL, schemaName, tablePrefix);
+        log.info("--loadSpecialColumns: sql=" + sql);
+        try {
+            jdbcProvider.executeQuery(sql,
+                    ((ResultSet rs) -> {
+                        while (rs.next()) {
+                            String fieldName = rs.getString(1);
+                            String fieldType = rs.getString(2);
+                            Type prestoType;
+                            if (DATATYPE_NUMBER.equals(fieldType)) {
+                                prestoType = DecimalType.createDecimalType(DECIMAL_DEFAULT_PRECISION, DECIMAL_DEFAULT_SCALE);
+                            }
+                            else if (DATATYPE_ARRAY_STRING.equals(fieldType)) {
+                                prestoType = new ArrayType(VarcharType.VARCHAR);
+                                log.info("-- " + fieldName + ":array<string>");
+                            }
+                            else {
+                                prestoType = new ArrayType(DoubleType.DOUBLE);
+                                log.info("-- " + fieldName + ":array<double>");
+                            }
+                            specialColsMap.put(fieldName, prestoType);
                         }
-                        else if (DATATYPE_ARRAY_STRING.equals(fieldType)) {
-                            prestoType = new ArrayType(VarcharType.VARCHAR);
-                            log.info("-- " + fieldName + ":array<string>");
-                        }
-                        else {
-                            prestoType = new ArrayType(DoubleType.DOUBLE);
-                            log.info("-- " + fieldName + ":array<double>");
-                        }
-                        specialColsMap.put(fieldName, prestoType);
-                    }
-                }));
+                    }));
+        }
+        catch (Exception e) {
+            log.error("--loadSpecialColumns failed: Cannot get the meta info from db. NOT BREAK");
+        }
+
         return specialColsMap.build();
+    }
+
+    private static boolean isSupportedArray(String origin, String prefixStr)
+    {
+        if (origin == null || "".equals(origin) || prefixStr == null || "".equals(prefixStr)) {
+            return false;
+        }
+        String[] prefixArray = prefixStr.split(",");
+        for (String prefix : prefixArray) {
+            if (origin.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String getPrefix(String origin, String prefixStr)
+    {
+        String[] prefixArray = prefixStr.split(",");
+        for (String prefix : prefixArray) {
+            if (origin.startsWith(prefix)) {
+                return prefix;
+            }
+        }
+        return null;
     }
 }
