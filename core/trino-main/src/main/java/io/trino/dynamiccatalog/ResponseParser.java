@@ -27,11 +27,22 @@ public class ResponseParser
     public String message;
     @JsonProperty("statusCode")
     public int statusCode;
+    @JsonProperty("data")
+    public Object data;
 
     public ResponseParser build(String message, int statusCode)
     {
         this.message = message;
         this.statusCode = statusCode;
+        this.data = null;
+        return this;
+    }
+
+    public ResponseParser build(String message, int statusCode, Object obj)
+    {
+        this.message = message;
+        this.statusCode = statusCode;
+        this.data = obj;
         return this;
     }
 
@@ -57,5 +68,15 @@ public class ResponseParser
     public void setStatusCode(int statusCode)
     {
         this.statusCode = statusCode;
+    }
+
+    public Object getData()
+    {
+        return data;
+    }
+
+    public void setData(Object data)
+    {
+        this.data = data;
     }
 }

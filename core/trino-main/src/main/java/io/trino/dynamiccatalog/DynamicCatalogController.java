@@ -29,6 +29,7 @@ import io.trino.server.security.ResourceSecurity;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -40,6 +41,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -205,6 +207,48 @@ public class DynamicCatalogController
         }
         log.info("-- deleteCatalog() : Successfully deleted catalog " + catalogName);
         return successResponse(responseParser.build(responseMessage + " : " + catalogName, 200));
+    }
+
+    @Path("find")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ResourceSecurity(PUBLIC)
+    public Response findCatalog(@QueryParam("catalogName") String catalogName)
+    {
+        log.info("-- findCatalog : catalogName = " + catalogName);
+        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
+        for (Map<String, String> catalog : catalogs) {
+            if (catalogName.equals(catalog.get("catalogName"))) {
+                if (catalogManager.getCatalog(catalogName).isPresent()) {
+                    catalog.put("usable", "1");
+                }
+                else {
+                    catalog.put("usable", "0");
+                }
+                return successResponse(responseParser.build("Successfully find : " + catalogName, 200, catalog));
+            }
+        }
+        return failedResponse(responseParser.build("Catalog doesn't exists: " + catalogName, 500));
+    }
+
+    @Path("findAll")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ResourceSecurity(PUBLIC)
+    public Response findCatalogList()
+    {
+        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
+        if (catalogs != null && catalogs.size() > 0) {
+            for (Map<String, String> catalog : catalogs) {
+                if (catalogManager.getCatalog(catalog.get("catalogName")).isPresent()) {
+                    catalog.put("usable", "1");
+                }
+                else {
+                    catalog.put("usable", "0");
+                }
+            }
+        }
+        return successResponse(responseParser.build("Successfully Get All catalog", 200, catalogs));
     }
 
     private CatalogName createCatalog(String catalogName, String connectorName, Map<String, String> properties)
