@@ -92,7 +92,7 @@ public class DynamicCatalogController
     {
         try {
             if (!this.dynamicCatalogService.enable) {
-                return failedResponse(responseParser.build("DynamicCatalog is not enabled", 500));
+                return failedResponse(responseParser.build("DynamicCatalog is not enabled", 403));
             }
             log.info("-- addCatalog() : Input values are " + catalogVo);
             InternalNode currentNode = this.internalNodeManager.getCurrentNode();
@@ -155,7 +155,7 @@ public class DynamicCatalogController
     public Response deleteCatalog(@QueryParam("catalogName") String catalogName)
     {
         if (!this.dynamicCatalogService.enable) {
-            return failedResponse(responseParser.build("DynamicCatalog is not enabled", 500));
+            return failedResponse(responseParser.build("DynamicCatalog is not enabled", 403));
         }
         log.info("-- deleteCatalog : catalogName = " + catalogName);
         InternalNode currentNode = this.internalNodeManager.getCurrentNode();
@@ -203,7 +203,7 @@ public class DynamicCatalogController
         }
         else {
             log.info("-- deleteCatalog() : Catalog doesn't exists, Can't be deleted " + catalogName);
-            return failedResponse(responseParser.build("Catalog doesn't exists: " + catalogName, 500));
+            return failedResponse(responseParser.build("Catalog doesn't exists: " + catalogName, 404));
         }
         log.info("-- deleteCatalog() : Successfully deleted catalog " + catalogName);
         return successResponse(responseParser.build(responseMessage + " : " + catalogName, 200));
@@ -225,10 +225,10 @@ public class DynamicCatalogController
                 else {
                     catalog.put("usable", "0");
                 }
-                return successResponse(responseParser.build("Successfully find : " + catalogName, 200, catalog));
+                return Response.status(Response.Status.OK).entity(catalog).type(MediaType.APPLICATION_JSON).build();
             }
         }
-        return failedResponse(responseParser.build("Catalog doesn't exists: " + catalogName, 500));
+        return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).build();
     }
 
     @Path("findAll")
@@ -248,7 +248,27 @@ public class DynamicCatalogController
                 }
             }
         }
-        return successResponse(responseParser.build("Successfully Get All catalog", 200, catalogs));
+        return Response.status(Response.Status.OK).entity(catalogs).type(MediaType.APPLICATION_JSON).build();
+    }
+
+    @Path("exist")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ResourceSecurity(PUBLIC)
+    public Response exist(@QueryParam("catalogName") String catalogName)
+    {
+        log.info("-- findCatalog : catalogName = " + catalogName);
+        Map<String, Object> result = new HashMap<>(2);
+        result.put("catalog", catalogName);
+        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
+        for (Map<String, String> catalog : catalogs) {
+            if (catalogName.equals(catalog.get("catalogName"))) {
+                result.put("exist", 1);
+                return Response.status(Response.Status.OK).entity(result).type(MediaType.APPLICATION_JSON).build();
+            }
+        }
+        result.put("exist", 0);
+        return Response.status(Response.Status.NOT_FOUND).entity(result).type(MediaType.APPLICATION_JSON).build();
     }
 
     private CatalogName createCatalog(String catalogName, String connectorName, Map<String, String> properties)
