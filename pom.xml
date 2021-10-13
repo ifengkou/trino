@@ -106,19 +106,19 @@
         <module>plugin/trino-base-jdbc</module>
         <!--<module>plugin/trino-bigquery</module>
         <module>plugin/trino-blackhole</module>
-        <module>plugin/trino-cassandra</module>
+        <module>plugin/trino-cassandra</module>-->
         <module>plugin/trino-clickhouse</module>
         <module>plugin/trino-druid</module>
-        <module>plugin/trino-elasticsearch</module>
+        <!--<module>plugin/trino-elasticsearch</module>
         <module>plugin/trino-example-http</module>
         <module>plugin/trino-geospatial</module>
         <module>plugin/trino-google-sheets</module>-->
         <module>plugin/trino-hive</module>
         <module>plugin/trino-hive-hadoop2</module>
-        <!--<module>plugin/trino-iceberg</module>
+        <!--<module>plugin/trino-iceberg</module>-->
         <module>plugin/trino-jmx</module>
         <module>plugin/trino-kafka</module>
-        <module>plugin/trino-kinesis</module>-->
+        <!--<module>plugin/trino-kinesis</module>-->
         <module>plugin/trino-kudu</module>
         <!--<module>plugin/trino-local-file</module>
         <module>plugin/trino-memory</module>
