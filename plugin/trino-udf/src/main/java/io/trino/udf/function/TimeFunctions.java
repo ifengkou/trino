@@ -76,11 +76,11 @@ public final class TimeFunctions
     @SqlType(StandardTypes.TIMESTAMP)
     public static long truncateTimestamp(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.TIMESTAMP) long timestamp)
     {
-        log.info("=====truncate timestamp = " + timestamp + ",unit=" + unit.toStringUtf8());
+        //log.info("=====truncate timestamp = " + timestamp + ",unit=" + unit.toStringUtf8());
         timestamp = scaleEpochMicrosToMillis(timestamp);
         long result = truncate(unit.toStringUtf8(), timestamp);
         result = scaleEpochMillisToMicros(result);
-        log.info("=====truncate result = " + result);
+        //log.info("=====truncate result = " + result);
         return result;
     }
 
