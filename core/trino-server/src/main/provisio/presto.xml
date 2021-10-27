@@ -7,8 +7,12 @@
         <directory path="${basedir}">
             <include>NOTICE</include>
             <include>README.txt</include>
+            <include>trino-cli</include>
+            <include>etc/</include>
+            <include>init/</include>
         </directory>
     </fileSet>
+
 
     <!-- Launcher -->
     <artifactSet to="bin">
@@ -58,6 +62,12 @@
 
     <artifactSet to="plugin/clickhouse">
         <artifact id="${project.groupId}:trino-clickhouse:zip:${project.version}">
+            <unpack />
+        </artifact>
+    </artifactSet>
+
+    <artifactSet to="plugin/db2">
+        <artifact id="${project.groupId}:trino-db2:zip:${project.version}">
             <unpack />
         </artifact>
     </artifactSet>
@@ -228,7 +238,7 @@
         <artifact id="${project.groupId}:trino-thrift:zip:${project.version}">
             <unpack />
         </artifact>
-    </artifactSet>
+    </artifactSet>-->
 
     <artifactSet to="plugin/elasticsearch">
         <artifact id="${project.groupId}:trino-elasticsearch:zip:${project.version}">
@@ -236,7 +246,7 @@
         </artifact>
     </artifactSet>
 
-    <artifactSet to="plugin/google-sheets">
+    <!-- <artifactSet to="plugin/google-sheets">
         <artifact id="${project.groupId}:trino-google-sheets:zip:${project.version}">
             <unpack />
         </artifact>
