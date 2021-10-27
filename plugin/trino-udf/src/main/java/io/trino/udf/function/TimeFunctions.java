@@ -42,7 +42,7 @@ public final class TimeFunctions
 
     private static final Logger log = Logger.get(TimeFunctions.class);
     //private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstance(DateTimeZone.forOffsetHours(+8));
-    //private static final long origin = new DateTime(0, DateTimeZone.UTC).withZoneRetainFields(DEFAULT_CHRONOLOGY.getZone()).getMillis()
+    //private static final long origin = new DateTime(0, DateTimeZone.UTC).withZoneRetainFields(DEFAULT_CHRONOLOGY.getZone()).getMillis();
     private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstance();
     private static final long origin = 0;
 

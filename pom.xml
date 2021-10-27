@@ -108,9 +108,10 @@
         <module>plugin/trino-blackhole</module>
         <module>plugin/trino-cassandra</module>-->
         <module>plugin/trino-clickhouse</module>
+        <module>plugin/trino-db2</module>
         <module>plugin/trino-druid</module>
-        <!--<module>plugin/trino-elasticsearch</module>
-        <module>plugin/trino-example-http</module>
+        <module>plugin/trino-elasticsearch</module>
+        <!--<module>plugin/trino-example-http</module>
         <module>plugin/trino-geospatial</module>
         <module>plugin/trino-google-sheets</module>-->
         <module>plugin/trino-hive</module>
