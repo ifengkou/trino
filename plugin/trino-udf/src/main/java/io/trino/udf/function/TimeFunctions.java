@@ -13,7 +13,6 @@
  */
 package io.trino.udf.function;
 
-import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.spi.TrinoException;
 import io.trino.spi.function.Description;
@@ -28,22 +27,13 @@ import org.joda.time.chrono.ISOChronology;
 import static io.trino.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static io.trino.spi.type.Timestamps.MICROSECONDS_PER_MILLISECOND;
 
-/**
- * from http://git.tingyun.com/gejun/presto-ext
- *
- * @author gejun
- * @date: 2021/10/12
- */
 public final class TimeFunctions
 {
     private TimeFunctions()
     {
     }
 
-    private static final Logger log = Logger.get(TimeFunctions.class);
-    //private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstance(DateTimeZone.forOffsetHours(+8));
-    //private static final long origin = new DateTime(0, DateTimeZone.UTC).withZoneRetainFields(DEFAULT_CHRONOLOGY.getZone()).getMillis();
-    private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstance();
+    private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstanceUTC();
     private static final long origin = 0;
 
     @Description("truncate with nm/h/d/w/M/y")
@@ -52,9 +42,6 @@ public final class TimeFunctions
     @SqlType(StandardTypes.DATE)
     public static long truncateDate(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.DATE) long date)
     {
-        /*date = scaleEpochMicrosToMillis(date);
-        long result = truncate(unit.toStringUtf8(), date);
-        return scaleEpochMillisToMicros(result);*/
         return truncate(unit.toStringUtf8(), date);
     }
 
@@ -64,9 +51,6 @@ public final class TimeFunctions
     @SqlType(StandardTypes.TIME)
     public static long truncateTime(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.TIME) long time)
     {
-        /*time = scaleEpochMicrosToMillis(time);
-        long result = truncate(unit.toStringUtf8(), time);
-        return scaleEpochMillisToMicros(result);*/
         return truncate(unit.toStringUtf8(), time);
     }
 
@@ -76,11 +60,9 @@ public final class TimeFunctions
     @SqlType(StandardTypes.TIMESTAMP)
     public static long truncateTimestamp(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.TIMESTAMP) long timestamp)
     {
-        //log.info("=====truncate timestamp = " + timestamp + ",unit=" + unit.toStringUtf8());
         timestamp = scaleEpochMicrosToMillis(timestamp);
         long result = truncate(unit.toStringUtf8(), timestamp);
         result = scaleEpochMillisToMicros(result);
-        //log.info("=====truncate result = " + result);
         return result;
     }
 
@@ -94,9 +76,12 @@ public final class TimeFunctions
         return Math.multiplyExact(epochMillis, MICROSECONDS_PER_MILLISECOND);
     }
 
-    private static long truncate(String granularity, long t)
+    public static long truncate(String granularity, long t)
     {
-        int factor = Integer.parseInt(granularity.substring(0, granularity.length() - 1));
+        int factor = 1;
+        if (granularity.length() > 1) {
+            factor = Integer.parseInt(granularity.substring(0, granularity.length() - 1));
+        }
         String unit = granularity.substring(granularity.length() - 1);
         Period period = period(factor, unit);
         final int years = period.getYears();
@@ -153,7 +138,7 @@ public final class TimeFunctions
                 else {
                     t = tt;
                 }
-                return t;
+                return DEFAULT_CHRONOLOGY.dayOfWeek().set(t, 1);
             }
             else {
                 t = DEFAULT_CHRONOLOGY.dayOfWeek().roundFloor(t);
@@ -268,7 +253,6 @@ public final class TimeFunctions
                 return t;
             }
         }
-        log.info("======time_truncate: result=" + t);
         return t;
     }
 
