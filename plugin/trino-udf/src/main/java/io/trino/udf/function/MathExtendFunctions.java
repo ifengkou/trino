@@ -11,28 +11,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.udf;
-
-import com.google.common.collect.ImmutableSet;
-import io.trino.spi.Plugin;
-import io.trino.udf.function.DateTimeExtFunctions;
-import io.trino.udf.function.TimeFunctions;
-
-import java.util.Set;
+package io.trino.udf.function;
 
 /**
  * @author shenlongguang https://github.com/ifengkou
- * @date: 2021/10/12
+ * @date: 2021/10/30
  */
-public class UdfPlugin
-        implements Plugin
+public final class MathExtendFunctions
 {
-    @Override
-    public Set<Class<?>> getFunctions()
+    private MathExtendFunctions()
     {
-        return ImmutableSet.<Class<?>>builder()
-                .add(TimeFunctions.class)
-                .add(DateTimeExtFunctions.class)
-                .build();
     }
 }
