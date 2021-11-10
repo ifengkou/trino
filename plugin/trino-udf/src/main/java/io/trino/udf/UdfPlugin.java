@@ -16,6 +16,8 @@ package io.trino.udf;
 import com.google.common.collect.ImmutableSet;
 import io.trino.spi.Plugin;
 import io.trino.udf.function.DateTimeExtFunctions;
+import io.trino.udf.function.IsNullExtFunction;
+import io.trino.udf.function.StringExtendFunctions;
 import io.trino.udf.function.TimeFunctions;
 
 import java.util.Set;
@@ -33,6 +35,8 @@ public class UdfPlugin
         return ImmutableSet.<Class<?>>builder()
                 .add(TimeFunctions.class)
                 .add(DateTimeExtFunctions.class)
+                .add(IsNullExtFunction.class)
+                .add(StringExtendFunctions.class)
                 .build();
     }
 }
