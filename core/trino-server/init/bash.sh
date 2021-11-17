@@ -76,8 +76,8 @@ if [ ! -f "$jvm_file" ]; then
     exit -1
 fi
 
+worker_file=$config_dir'config_worker.properties'
 if [ $server_package -gt 1 ];then
-    worker_file=$config_dir'config_worker.properties'
     if [ ! -f "$worker_file" ]; then
         colorEcho $RED "{trino-base}/etc/目录下未找到config_worker.properties"
         echo_cp_tip
@@ -85,8 +85,20 @@ if [ $server_package -gt 1 ];then
     fi
 fi
 
+# 修改coordinator_hostname
+coordinator_hostname=""
+read -p "请输入coordinator的Hostname/IP[hostname]:" coordinator_hostname
+echo "coordinator_hostname=( $coordinator_hostname ) "
+sed -i "s|{{coordinator_hostname}}|$coordinator_hostname|g" $config_file
+if [ -f "$worker_file" ]; then
+    sed -i "s|{{coordinator_hostname}}|$coordinator_hostname|g" $worker_file
+fi
+
 # 修改mysql jdbc url
 db_url=""
 read -p "请输入bpi_conf数据库的IP/Hostname和端口[10.128.xx.xx:3306]:" db_url
-echo "jdbc.url=$db_url"
+echo "jdbc.url=( $db_url ) "
 sed -i "s|{{mysql_jdbc_url}}|$db_url|g" $config_file
+if [ -f "$worker_file" ]; then
+    sed -i "s|{{mysql_jdbc_url}}|$db_url|g" $worker_file
+fi
