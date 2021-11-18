@@ -51,7 +51,7 @@ public class KuduExtensionProvider
     @Inject
     public KuduExtensionProvider(JdbcProvider jdbcProvider, KuduExtensionConfig config)
     {
-        log.info("--- kudu extension: Init KuduExtensionProvider");
+        log.debug("--- kudu extension: Init KuduExtensionProvider");
         this.jdbcProvider = jdbcProvider;
         this.kuduExtensionConfig = config;
     }
@@ -65,7 +65,6 @@ public class KuduExtensionProvider
      */
     public ImmutableMap<String, Type> loadSpecialColumns(String schemaName, String tableName)
     {
-        log.info("--kudu extension: loadSpecialColumns");
         ImmutableMap.Builder<String, Type> specialColsMap = new ImmutableMap.Builder<>();
         if (!kuduExtensionConfig.isArrayEnable()) {
             return specialColsMap.build();
@@ -77,10 +76,11 @@ public class KuduExtensionProvider
         if (!isSupportedArray(tableName, kuduExtensionConfig.getTablePrefix())) {
             return specialColsMap.build();
         }
+        log.debug("--kudu extension: loadSpecialColumns");
         String tablePrefix = getPrefix(tableName, kuduExtensionConfig.getTablePrefix());
         // The database in DB and the schema in kudu must have the same name
         String sql = String.format(ARRAY_DECIMAL_COLUMN_SQL, schemaName, tablePrefix);
-        log.info("--loadSpecialColumns: sql=" + sql);
+        log.debug("--loadSpecialColumns: sql=" + sql);
         try {
             jdbcProvider.executeQuery(sql,
                     ((ResultSet rs) -> {
@@ -93,11 +93,11 @@ public class KuduExtensionProvider
                             }
                             else if (DATATYPE_ARRAY_STRING.equals(fieldType)) {
                                 prestoType = new ArrayType(VarcharType.VARCHAR);
-                                log.info("-- " + fieldName + ":array<string>");
+                                log.debug("-- " + fieldName + ":array<string>");
                             }
                             else {
                                 prestoType = new ArrayType(DoubleType.DOUBLE);
-                                log.info("-- " + fieldName + ":array<double>");
+                                log.debug("-- " + fieldName + ":array<double>");
                             }
                             specialColsMap.put(fieldName, prestoType);
                         }
