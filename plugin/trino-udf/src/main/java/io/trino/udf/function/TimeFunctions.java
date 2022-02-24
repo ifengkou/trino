@@ -21,11 +21,15 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.StandardTypes;
 import org.joda.time.Chronology;
+import org.joda.time.DateTime;
+import org.joda.time.Days;
+import org.joda.time.LocalDate;
 import org.joda.time.Period;
 import org.joda.time.chrono.ISOChronology;
 
 import static io.trino.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static io.trino.spi.type.Timestamps.MICROSECONDS_PER_MILLISECOND;
+import static java.util.concurrent.TimeUnit.DAYS;
 
 public final class TimeFunctions
 {
@@ -33,6 +37,7 @@ public final class TimeFunctions
     {
     }
 
+    //private static final Logger log = Logger.get(DateTimeExtFunctions.class);
     private static final Chronology DEFAULT_CHRONOLOGY = ISOChronology.getInstanceUTC();
     private static final long origin = 0;
 
@@ -42,7 +47,16 @@ public final class TimeFunctions
     @SqlType(StandardTypes.DATE)
     public static long truncateDate(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.DATE) long date)
     {
-        return truncate(unit.toStringUtf8(), date);
+        //StandardTypes.DATE 参数或者返回值表示是距离1970-01-01 的天数
+        //log.error(date + "");
+        //天数转当前毫秒数
+        long mills = DAYS.toMillis(date);
+        //log.error(mills + "");
+        long result = truncate(unit.toStringUtf8(), mills);
+        DateTime dateTime = new DateTime(result);
+        //log.error(dateTime.getYear() + "-" + dateTime.getMonthOfYear() + "-" + dateTime.getDayOfMonth());
+        LocalDate localDate = dateTime.toLocalDate();
+        return Days.daysBetween(new LocalDate(1970, 1, 1), localDate).getDays();
     }
 
     @Description("truncate with nm/h/d/w/M/y")
@@ -85,6 +99,7 @@ public final class TimeFunctions
         String unit = granularity.substring(granularity.length() - 1);
         Period period = period(factor, unit);
         final int years = period.getYears();
+
         if (years > 0) {
             if (years > 1) {
                 int y = DEFAULT_CHRONOLOGY.years().getDifference(t, origin);

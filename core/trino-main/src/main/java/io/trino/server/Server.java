@@ -124,6 +124,9 @@ public class Server
 
             injector.getInstance(PluginManager.class).loadPlugins();
 
+
+            // 同时支持文件静态和动态加载catalog
+            injector.getInstance(StaticCatalogStore.class).loadCatalogs();
             /**
              * [feature] dynamic load catalogs from db
              *
@@ -134,10 +137,6 @@ public class Server
             if (enableDynamicCatalog) {
                 injector.getInstance(DynamicCatalogStore.class).loadCatalogs();
             }
-            else {
-                injector.getInstance(StaticCatalogStore.class).loadCatalogs();
-            }
-            //injector.getInstance(StaticCatalogStore.class).loadCatalogs();
 
             // TODO: remove this huge hack
             updateConnectorIds(injector.getInstance(Announcer.class), injector.getInstance(CatalogManager.class));

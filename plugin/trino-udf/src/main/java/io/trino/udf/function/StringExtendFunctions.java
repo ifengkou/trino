@@ -30,6 +30,7 @@ import static java.lang.Math.abs;
 
 /**
  * string function extends
+ *
  * @author shenlongguang https://github.com/ifengkou
  * @date: 2021/10/30
  */
@@ -59,7 +60,7 @@ public final class StringExtendFunctions
     }
 
     @Description("Substring starting at first char")
-    @ScalarFunction("leftx")
+    @ScalarFunction("substr_left")
     @LiteralParameters("x")
     @SqlType("varchar(x)")
     public static Slice left(@SqlType("varchar(x)") Slice utf8)
@@ -68,7 +69,7 @@ public final class StringExtendFunctions
     }
 
     @Description("Substring of given length starting at first char")
-    @ScalarFunction("leftx")
+    @ScalarFunction("substr_left")
     @LiteralParameters("x")
     @SqlType("varchar(x)")
     public static Slice left(@SqlType("varchar(x)") Slice utf8, @SqlType(StandardTypes.BIGINT) long length)
@@ -80,7 +81,7 @@ public final class StringExtendFunctions
     }
 
     @Description("Substring starting at last char")
-    @ScalarFunction("rightx")
+    @ScalarFunction("substr_right")
     @LiteralParameters("x")
     @SqlType("varchar(x)")
     public static Slice right(@SqlType("varchar(x)") Slice utf8)
@@ -89,7 +90,7 @@ public final class StringExtendFunctions
     }
 
     @Description("Substring of given length starting at last char")
-    @ScalarFunction("rightx")
+    @ScalarFunction("substr_right")
     @LiteralParameters("x")
     @SqlType("varchar(x)")
     public static Slice right(@SqlType("varchar(x)") Slice utf8, @SqlType(StandardTypes.BIGINT) long length)
@@ -104,7 +105,7 @@ public final class StringExtendFunctions
     }
 
     @Description("Substring of given length starting at mid index")
-    @ScalarFunction("mid")
+    @ScalarFunction("substr_mid")
     @LiteralParameters("x")
     @SqlType("varchar(x)")
     public static Slice mid(@SqlType("varchar(x)") Slice utf8, @SqlType(StandardTypes.BIGINT) long start, @SqlType(StandardTypes.BIGINT) long length)

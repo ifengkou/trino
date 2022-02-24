@@ -76,7 +76,6 @@ public class KuduExtensionProvider
         if (!isSupportedArray(tableName, kuduExtensionConfig.getTablePrefix())) {
             return specialColsMap.build();
         }
-        log.debug("--kudu extension: loadSpecialColumns");
         String tablePrefix = getPrefix(tableName, kuduExtensionConfig.getTablePrefix());
         // The database in DB and the schema in kudu must have the same name
         String sql = String.format(ARRAY_DECIMAL_COLUMN_SQL, schemaName, tablePrefix);
@@ -93,11 +92,9 @@ public class KuduExtensionProvider
                             }
                             else if (DATATYPE_ARRAY_STRING.equals(fieldType)) {
                                 prestoType = new ArrayType(VarcharType.VARCHAR);
-                                log.debug("-- " + fieldName + ":array<string>");
                             }
                             else {
                                 prestoType = new ArrayType(DoubleType.DOUBLE);
-                                log.debug("-- " + fieldName + ":array<double>");
                             }
                             specialColsMap.put(fieldName, prestoType);
                         }

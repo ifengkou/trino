@@ -38,9 +38,12 @@ import org.joda.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 import static io.trino.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
+import static io.trino.spi.type.DateTimeEncoding.unpackMillisUtc;
 import static io.trino.spi.type.TimeZoneKey.MAX_TIME_ZONE_KEY;
+import static io.trino.spi.type.TimeZoneKey.getTimeZoneKey;
 import static io.trino.spi.type.TimeZoneKey.getTimeZoneKeys;
 import static io.trino.udf.function.TimeFunctions.scaleEpochMicrosToMillis;
+import static java.lang.Math.multiplyExact;
 import static java.lang.Math.toIntExact;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -63,19 +66,17 @@ public final class DateTimeExtFunctions
 
     private static final ISOChronology UTC_CHRONOLOGY = ISOChronology.getInstanceUTC();
 
-    private static final DateTimeField DAY_OF_WEEK = UTC_CHRONOLOGY.dayOfWeek();
     private static final DateTimeField DAY_OF_MONTH = UTC_CHRONOLOGY.dayOfMonth();
-    private static final DateTimeField DAY_OF_YEAR = UTC_CHRONOLOGY.dayOfYear();
-    private static final DateTimeField WEEK_OF_YEAR = UTC_CHRONOLOGY.weekOfWeekyear();
-    private static final DateTimeField YEAR_OF_WEEK = UTC_CHRONOLOGY.weekyear();
-    private static final DateTimeField MONTH_OF_YEAR = UTC_CHRONOLOGY.monthOfYear();
 
-    public static final String[] STANDARD_DATETIME_PATTERN = new String[] {"yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss"};
-    public static final String[] STANDARD_DATE_PATTERN = new String[] {"yyyy-MM-dd", "yyyy/MM/dd"};
+    public static final String[] STANDARD_DATETIME_PATTERN = new String[]
+            {"yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss", "yyyyMMddHHmmss",
+                    "yyyy-MM-dd HH:mm:ss SSS", "HH:mm:ss", "yyyy-MM-dd HH:mm"};
+    public static final String[] STANDARD_DATE_PATTERN = new String[] {"yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd"};
     public static final String[] STANDARD_ALL_PATTERN;
 
     private static final int TIME_ZONE_MASK = 0xFFF;
     private static final int MILLIS_SHIFT = 12;
+    public static final int MICROSECONDS_PER_MILLISECOND = 1000;
 
     private DateTimeExtFunctions()
     {
@@ -106,29 +107,23 @@ public final class DateTimeExtFunctions
     public static long currentDate(ConnectorSession session)
     {
         ISOChronology chronology = getChronology(session.getTimeZoneKey());
-
-        // It is ok for this method to use the Object interfaces because it is constant folded during
-        // plan optimization
         LocalDate currentDate = new DateTime(session.getStart().toEpochMilli(), chronology).toLocalDate();
         return Days.daysBetween(new LocalDate(1970, 1, 1), currentDate).getDays();
     }
 
     @Description("Parse the specified date by give (year,month,day)")
     @ScalarFunction("date")
-    //@SqlType("timestamp(3) with time zone")
     @SqlType(StandardTypes.DATE)
     public static long parseDate(@SqlType(StandardTypes.INTEGER) long year, @SqlType(StandardTypes.INTEGER) long month, @SqlType(StandardTypes.INTEGER) long day)
     {
         DateTime dateTime = new DateTime(toIntExact(year), toIntExact(month), toIntExact(day), 0, 0, 0);
-        //return packDateTimeWithZone(dateTime);
-        //return MILLISECONDS.toDays(dateTime.getMillis());
         LocalDate localDate = dateTime.toLocalDate();
         return Days.daysBetween(new LocalDate(1970, 1, 1), localDate).getDays();
     }
 
     @Description("Parse the specified date by give (year,month,day)")
     @ScalarFunction("time")
-    @SqlType("timestamp(3) with time zone")
+    @SqlType("timestamp(3)")
     public static long parseTime(@SqlType(StandardTypes.INTEGER) long hour,
             @SqlType(StandardTypes.INTEGER) long minute,
             @SqlType(StandardTypes.INTEGER) long second)
@@ -138,7 +133,8 @@ public final class DateTimeExtFunctions
                 .withMinuteOfHour(toIntExact(minute))
                 .withSecondOfMinute(toIntExact(second))
                 .withMillisOfSecond(0);
-        return packDateTimeWithZone(dateTime);
+        //带时区的 return packDateTimeWithZone(dateTime);
+        return scaleEpochMillisToMicros(dateTime.getMillis());
     }
 
     @Description("Year of the given date(str)")
@@ -159,16 +155,6 @@ public final class DateTimeExtFunctions
         return dateTime.getYear();
     }
 
-    /*@Description("Year of the given date(date) ")
-    @ScalarFunction(value = "year")
-    @SqlType(StandardTypes.INTEGER)
-    public static long yearFromDate(@SqlType(StandardTypes.DATE) long date)
-    {
-        long mills = DAYS.toMillis(date);
-        DateTime dateTime = new DateTime(mills);
-        return dateTime.getYear();
-    }*/
-
     @Description("Quarter of the year of the given date(str)")
     @ScalarFunction(value = "quarter", alias = "quarter_of_year")
     @LiteralParameters("x")
@@ -187,16 +173,6 @@ public final class DateTimeExtFunctions
         DateTime dateTime = new DateTime();
         return (dateTime.getMonthOfYear() / 4 + 1);
     }
-
-    /*@Description("Quarter of the year of the given date(date) ")
-    @ScalarFunction(value = "quarter", alias = "quarter_of_year")
-    @SqlType(StandardTypes.INTEGER)
-    public static long quarterOfYear(@SqlType(StandardTypes.DATE) long date)
-    {
-        long mills = DAYS.toMillis(date);
-        DateTime dateTime = new DateTime(mills);
-        return (dateTime.getMonthOfYear() / 4 + 1);
-    }*/
 
     @Description("Month of the year of the given date(str)")
     @ScalarFunction(value = "month", alias = "month_of_year")
@@ -217,16 +193,6 @@ public final class DateTimeExtFunctions
         return dateTime.getMonthOfYear();
     }
 
-    /*@Description("Month of the year of the given date(date) ")
-    @ScalarFunction(value = "month", alias = "month_of_year")
-    @SqlType(StandardTypes.INTEGER)
-    public static long monthOfYear(@SqlType(StandardTypes.DATE) long date)
-    {
-        long mills = DAYS.toMillis(date);
-        DateTime dateTime = new DateTime(mills);
-        return dateTime.getMonthOfYear();
-    }*/
-
     @Description("Week of the year of the given date(str)")
     @ScalarFunction(value = "week", alias = "week_of_year")
     @LiteralParameters("x")
@@ -245,16 +211,6 @@ public final class DateTimeExtFunctions
         DateTime dateTime = new DateTime();
         return dateTime.getWeekOfWeekyear();
     }
-
-    /*@Description("Week of the year of the given date(date) ")
-    @ScalarFunction("week")
-    @SqlType(StandardTypes.INTEGER)
-    public static long weekOfYear(@SqlType(StandardTypes.DATE) long date)
-    {
-        long mills = DAYS.toMillis(date);
-        DateTime dateTime = new DateTime(mills);
-        return dateTime.getWeekOfWeekyear();
-    }*/
 
     @Description("weekday of the given date(str)")
     @ScalarFunction(value = "weekday")
@@ -279,8 +235,8 @@ public final class DateTimeExtFunctions
         return week;
     }
 
-    @Description("Week of the year of the given date(date) ")
-    @ScalarFunction("weekday")
+    @Description("Day of the week of the given date(date) ")
+    @ScalarFunction(value = "weekday", alias = "day_of_week")
     @SqlType(StandardTypes.INTEGER)
     public static long weekday(@SqlType(StandardTypes.DATE) long date)
     {
@@ -289,6 +245,36 @@ public final class DateTimeExtFunctions
         int week = dateTime.getDayOfWeek();
         week = week == 7 ? 0 : week;
         return week;
+    }
+
+    @Description("Day of the week of the given timestamp(3)")
+    @ScalarFunction(value = "weekday")
+    @LiteralParameters("p")
+    @SqlType(StandardTypes.INTEGER)
+    public static long weekdayFromTimestamp(@SqlType("timestamp(p)") long timestamp)
+    {
+        long mills = scaleEpochMicrosToMillis(timestamp);
+        DateTime dateTime = new DateTime(mills);
+        int week = dateTime.getDayOfWeek();
+        week = week == 7 ? 0 : week;
+        return week;
+    }
+
+    @Description("Day of the week of the given timestamp(3)")
+    @ScalarFunction(value = "weekday")
+    @LiteralParameters("p")
+    @SqlType(StandardTypes.INTEGER)
+    public static long weekdayFromTimestampTz(@SqlType("timestamp(p) with time zone") long packedEpochMillis)
+    {
+        ISOChronology chronology = getChronology(unpackZoneKey(packedEpochMillis));
+        int week = chronology.dayOfWeek().get(unpackMillisUtc(packedEpochMillis));
+        week = week == 7 ? 0 : week;
+        return week;
+    }
+
+    public static TimeZoneKey unpackZoneKey(long dateTimeWithTimeZone)
+    {
+        return getTimeZoneKey((short) (dateTimeWithTimeZone & TIME_ZONE_MASK));
     }
 
     @Description("Day of the month of current time")
@@ -320,16 +306,6 @@ public final class DateTimeExtFunctions
         long mills = packDateTimeWithZone(Math.round(unixMills), session.getTimeZoneKey());
         return DAY_OF_MONTH.get(mills);
     }
-
-    /*@Description("Day of the day of the date(date) ")
-    @ScalarFunction("day")
-    @SqlType(StandardTypes.INTEGER)
-    public static long dayFromDate(@SqlType(StandardTypes.DATE) long date)
-    {
-        long mills = DAYS.toMillis(date);
-        DateTime time = new DateTime(mills);
-        return time.getDayOfMonth();
-    }*/
 
     @Description("Hour of the day of the current time ")
     @ScalarFunction("hour")
@@ -464,41 +440,6 @@ public final class DateTimeExtFunctions
         return getDateField(UTC_CHRONOLOGY, unit).getDifferenceAsLong(time2.getMillis(), time1.getMillis());
     }
 
-    /* 已存在
-    @Description("Difference of the given dates in the given unit(day/month/year)")
-    @ScalarFunction("date_diff")
-    @SqlType(StandardTypes.BIGINT)
-    public static long diffDate(@SqlType("varchar(x)") Slice unit, @SqlType(StandardTypes.DATE) long date1, @SqlType(StandardTypes.DATE) long date2)
-    {
-        long dateMills1 = DAYS.toMillis(date1);
-        long dateMills2 = DAYS.toMillis(date2);
-        return getDateField(UTC_CHRONOLOGY, unit).getDifferenceAsLong(dateMills2, dateMills1);
-    }*/
-
-    /* // 返回时间戳 带时区的
-    @Description("Parses the specified date/time by the given format")
-    @ScalarFunction("to_date")
-    @LiteralParameters({"x", "y"})
-    @SqlType("timestamp(3) with time zone")
-    public static long parseDatetime(ConnectorSession session, @SqlType("varchar(x)") Slice datetime)
-    {
-        DateTime time = parseDateTime(datetime.toStringUtf8(),
-                null,
-                getChronology(session.getTimeZoneKey()),
-                session.getLocale());
-        return packDateTimeWithZone(time);
-    }
-
-    @Description("Parses the specified date/time by the given format")
-    @ScalarFunction("to_date")
-    @LiteralParameters({"x", "y"})
-    @SqlType("timestamp(3) with time zone")
-    public static long parseDatetime(ConnectorSession session, @SqlType(StandardTypes.BIGINT) long millis)
-    {
-        DateTime time = new DateTime(millis);
-        time.withChronology(getChronology(session.getTimeZoneKey()));
-        return packDateTimeWithZone(time);
-    }*/
     @Description("Parses the specified date/time by the given format")
     @ScalarFunction("to_date")
     @LiteralParameters("x")
@@ -519,12 +460,35 @@ public final class DateTimeExtFunctions
     @Description("Parses the specified date/time by the given unixMills(13)")
     @ScalarFunction("to_date")
     @SqlType(StandardTypes.DATE)
-    public static long parseDatetime(@SqlType(StandardTypes.DOUBLE) double unixMills)
+    public static long parseDateWithUnixMills(@SqlType(StandardTypes.DOUBLE) double unixMills)
     {
         DateTime time = new DateTime(Math.round(unixMills));
         time.withHourOfDay(0).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0);
         LocalDate localDate = time.toLocalDate();
         return Days.daysBetween(new LocalDate(1970, 1, 1), localDate).getDays();
+    }
+
+    @Description("Parses the specified date/time by timestamp(p)")
+    @LiteralParameters("p")
+    @ScalarFunction("to_date")
+    @SqlType(StandardTypes.DATE)
+    public static long parseDateWithTimestamp(@SqlType("timestamp(p)") long timestamp)
+    {
+        long mills = scaleEpochMicrosToMillis(timestamp);
+        DateTime time = new DateTime(mills);
+        LocalDate localDate = time.toLocalDate();
+        return Days.daysBetween(new LocalDate(1970, 1, 1), localDate).getDays();
+    }
+
+    @Description("Parses the specified date/time by timestamp(p) with time zone")
+    @LiteralParameters("p")
+    @ScalarFunction("to_date")
+    @SqlType(StandardTypes.DATE)
+    public static long parseDateWithTimestampTz(@SqlType("timestamp(p) with time zone") long packedEpochMillis)
+    {
+        ISOChronology chronology = getChronology(unpackZoneKey(packedEpochMillis));
+        LocalDate currentDate = new DateTime(unpackMillisUtc(packedEpochMillis), chronology).toLocalDate();
+        return Days.daysBetween(new LocalDate(1970, 1, 1), currentDate).getDays();
     }
 
     @Description("Parse a date(return original date)")
@@ -560,18 +524,26 @@ public final class DateTimeExtFunctions
         return (millisUtc << MILLIS_SHIFT) | (timeZoneKey & TIME_ZONE_MASK);
     }
 
+    public static long scaleEpochMillisToMicros(long epochMillis)
+    {
+        return multiplyExact(epochMillis, MICROSECONDS_PER_MILLISECOND);
+    }
+
     public static DateTime parseDateTime(String dateTimeString, String[] formatter)
     {
         if (formatter == null || formatter.length == 0) {
             formatter = STANDARD_ALL_PATTERN;
         }
+        int length = dateTimeString.length();
         for (String f : formatter) {
-            DateTimeFormatter ft = DateTimeFormat.forPattern(f);
-            try {
-                return parseDateTimeHelper(ft, dateTimeString);
-            }
-            catch (TrinoException e) {
-                continue;
+            if (length == f.length()) {
+                DateTimeFormatter ft = DateTimeFormat.forPattern(f);
+                try {
+                    return parseDateTimeHelper(ft, dateTimeString);
+                }
+                catch (TrinoException e) {
+                    continue;
+                }
             }
         }
         throw new TrinoException(INVALID_FUNCTION_ARGUMENT, "Cannot parse [" + dateTimeString + "] to a DateTime");
@@ -582,16 +554,19 @@ public final class DateTimeExtFunctions
         if (formatter == null || formatter.length == 0) {
             formatter = STANDARD_ALL_PATTERN;
         }
+        int length = dateTimeString.length();
         for (String f : formatter) {
-            DateTimeFormatter ft = DateTimeFormat.forPattern(f)
-                    .withChronology(chronology)
-                    .withOffsetParsed()
-                    .withLocale(locale);
-            try {
-                return parseDateTimeHelper(ft, dateTimeString);
-            }
-            catch (TrinoException e) {
-                continue;
+            if (length == f.length()) {
+                DateTimeFormatter ft = DateTimeFormat.forPattern(f)
+                        .withChronology(chronology)
+                        .withOffsetParsed()
+                        .withLocale(locale);
+                try {
+                    return parseDateTimeHelper(ft, dateTimeString);
+                }
+                catch (TrinoException e) {
+                    continue;
+                }
             }
         }
         throw new TrinoException(INVALID_FUNCTION_ARGUMENT, "Cannot parse [" + dateTimeString + "] to a DateTime");

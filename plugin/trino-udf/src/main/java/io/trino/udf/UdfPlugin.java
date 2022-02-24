@@ -19,6 +19,7 @@ import io.trino.udf.function.DateTimeExtFunctions;
 import io.trino.udf.function.IsNullExtFunction;
 import io.trino.udf.function.StringExtendFunctions;
 import io.trino.udf.function.TimeFunctions;
+import io.trino.udf.function.roaringbitmap.RoaringBitmapFunction;
 
 import java.util.Set;
 
@@ -37,6 +38,7 @@ public class UdfPlugin
                 .add(DateTimeExtFunctions.class)
                 .add(IsNullExtFunction.class)
                 .add(StringExtendFunctions.class)
+                .add(RoaringBitmapFunction.class)
                 .build();
     }
 }

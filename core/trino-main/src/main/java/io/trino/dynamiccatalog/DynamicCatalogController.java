@@ -109,8 +109,9 @@ public class DynamicCatalogController
                 boolean saved = this.dynamicCatalogService.addCatalogToDb(catalogVo);
                 if (!saved) {
                     log.error("-- addCatalog() ： Error saving catalog to db.");
-                    //not breaking;
+                    return failedResponse(responseParser.build("Save catalog to database failed，" + catalogName, 500));
                 }
+
                 // find all node
                 Set<InternalNode> activeNodes = this.internalNodeManager.getNodes(NodeState.ACTIVE);
                 if (activeNodes != null && activeNodes.size() > 0) {
@@ -163,7 +164,11 @@ public class DynamicCatalogController
             // Coordinator logic
             log.info("-- deleteCatalog : Execute coordinator logic: delete from db,then announce all worker");
             // delete to  mysql catalog meta table
-            this.dynamicCatalogService.deleteCatalogFromDb(catalogName);
+            boolean deleted = this.dynamicCatalogService.deleteCatalogFromDb(catalogName);
+            if (!deleted) {
+                log.error("-- deleteCatalog() ： Error delete catalog from db.");
+                return failedResponse(responseParser.build("Delete catalog from database failed，" + catalogName, 500));
+            }
             // find all node
             Set<InternalNode> activeNodes = this.internalNodeManager.getNodes(NodeState.ACTIVE);
             if (activeNodes != null && activeNodes.size() > 0) {
