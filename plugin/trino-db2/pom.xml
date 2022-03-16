@@ -3,12 +3,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>io.trino</groupId>
-        <artifactId>trino-root</artifactId>
-        <version>356</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
+	<parent>
+		<groupId>io.trino</groupId>
+		<artifactId>trino-root</artifactId>
+		<version>373</version>
+	</parent>
 
 	<artifactId>trino-db2</artifactId>
 	<description>Trino - Db2 Connector</description>
@@ -113,16 +112,4 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.gaul</groupId>
-                <artifactId>modernizer-maven-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>
