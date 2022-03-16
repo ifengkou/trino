@@ -67,6 +67,8 @@ import io.trino.execution.scheduler.NodeScheduler;
 import io.trino.execution.scheduler.NodeSchedulerConfig;
 import io.trino.execution.scheduler.UniformNodeSelectorFactory;
 import io.trino.execution.warnings.WarningCollector;
+import io.trino.extension.BaseJdbcProvider;
+import io.trino.extension.JdbcConfig;
 import io.trino.index.IndexManager;
 import io.trino.memory.MemoryManagerConfig;
 import io.trino.memory.NodeMemoryConfig;
@@ -122,6 +124,7 @@ import io.trino.spi.PageIndexerFactory;
 import io.trino.spi.PageSorter;
 import io.trino.spi.Plugin;
 import io.trino.spi.connector.ConnectorFactory;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.session.PropertyMetadata;
 import io.trino.spi.type.TypeManager;
 import io.trino.spi.type.TypeOperators;
@@ -277,6 +280,12 @@ public class LocalQueryRunner
     private final OperatorFactories operatorFactories;
     private final StatementAnalyzerFactory statementAnalyzerFactory;
     private boolean printPlan;
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    private final JdbcProvider jdbcProvider;
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -388,7 +397,8 @@ public class LocalQueryRunner
         this.pageFunctionCompiler = new PageFunctionCompiler(metadata, 0);
         this.expressionCompiler = new ExpressionCompiler(metadata, pageFunctionCompiler);
         this.joinFilterFunctionCompiler = new JoinFilterFunctionCompiler(metadata);
-
+        JdbcConfig jdbcConfig = new JdbcConfig();
+        this.jdbcProvider = new BaseJdbcProvider(jdbcConfig);
         HandleResolver handleResolver = new HandleResolver();
 
         NodeInfo nodeInfo = new NodeInfo("test");
@@ -419,7 +429,8 @@ public class LocalQueryRunner
                 materializedViewPropertyManager,
                 analyzePropertyManager,
                 tableProceduresPropertyManager,
-                nodeSchedulerConfig);
+                nodeSchedulerConfig,
+                jdbcProvider);
 
         GlobalSystemConnectorFactory globalSystemConnectorFactory = new GlobalSystemConnectorFactory(ImmutableSet.of(
                 new NodeSystemTable(nodeManager),

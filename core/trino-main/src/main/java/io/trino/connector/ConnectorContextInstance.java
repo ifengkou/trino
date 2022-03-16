@@ -19,6 +19,7 @@ import io.trino.spi.PageSorter;
 import io.trino.spi.VersionEmbedder;
 import io.trino.spi.connector.ConnectorContext;
 import io.trino.spi.connector.MetadataProvider;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.type.TypeManager;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,6 +39,12 @@ public class ConnectorContextInstance
     private final PageIndexerFactory pageIndexerFactory;
     private final Supplier<ClassLoader> duplicatePluginClassLoaderFactory;
     private final AtomicBoolean pluginClassLoaderDuplicated = new AtomicBoolean();
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    private final JdbcProvider jdbcProvider;
 
     public ConnectorContextInstance(
             NodeManager nodeManager,
@@ -46,7 +53,8 @@ public class ConnectorContextInstance
             MetadataProvider metadataProvider,
             PageSorter pageSorter,
             PageIndexerFactory pageIndexerFactory,
-            Supplier<ClassLoader> duplicatePluginClassLoaderFactory)
+            Supplier<ClassLoader> duplicatePluginClassLoaderFactory,
+            JdbcProvider jdbcProvider)
     {
         this.nodeManager = requireNonNull(nodeManager, "nodeManager is null");
         this.versionEmbedder = requireNonNull(versionEmbedder, "versionEmbedder is null");
@@ -55,6 +63,7 @@ public class ConnectorContextInstance
         this.pageSorter = requireNonNull(pageSorter, "pageSorter is null");
         this.pageIndexerFactory = requireNonNull(pageIndexerFactory, "pageIndexerFactory is null");
         this.duplicatePluginClassLoaderFactory = requireNonNull(duplicatePluginClassLoaderFactory, "duplicatePluginClassLoaderFactory is null");
+        this.jdbcProvider = jdbcProvider;
     }
 
     @Override
@@ -98,5 +107,11 @@ public class ConnectorContextInstance
     {
         checkState(!pluginClassLoaderDuplicated.getAndSet(true), "plugin class loader already duplicated");
         return duplicatePluginClassLoaderFactory.get();
+    }
+
+    @Override
+    public JdbcProvider getJdbcProvider()
+    {
+        return jdbcProvider;
     }
 }

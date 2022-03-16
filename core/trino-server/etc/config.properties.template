@@ -1,0 +1,16 @@
+coordinator=true
+node-scheduler.include-coordinator=false
+http-server.http.port=${trino.http-server.http.port}
+query.max-memory=${trino.query.max-memory}
+query.max-memory-per-node=${trino.query.max-memory-per-node}
+query.max-total-memory-per-node=${trino.query.max-total-memory-per-node}
+discovery-server.enabled=true
+discovery.uri=http://${trino.coordinator.hostname}:${trino.http-server.http.port}
+dynamic-catalog.enable=true
+dynamic-catalog.table-name=bpi_conf.ADHOC_TRINO_CATALOG
+trino.extension.jdbc.enable=true
+trino.extension.jdbc.driver=com.mysql.jdbc.Driver
+trino.extension.jdbc.url=${mysql.bpi-conf.jdbc-url}
+trino.extension.jdbc.username=${mysql.username}
+trino.extension.jdbc.password=${mysql.password}
+trino.extension.jdbc.max-pool-size=2

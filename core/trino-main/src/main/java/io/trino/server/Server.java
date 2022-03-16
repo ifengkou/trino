@@ -38,12 +38,15 @@ import io.airlift.log.Logger;
 import io.airlift.node.NodeModule;
 import io.airlift.tracetoken.TraceTokenModule;
 import io.trino.client.NodeVersion;
+import io.trino.dynamiccatalog.DynamicCatalogService;
+import io.trino.dynamiccatalog.DynamicCatalogStore;
 import io.trino.eventlistener.EventListenerManager;
 import io.trino.eventlistener.EventListenerModule;
 import io.trino.exchange.ExchangeManagerModule;
 import io.trino.exchange.ExchangeManagerRegistry;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
 import io.trino.execution.warnings.WarningCollectorModule;
+import io.trino.extension.JdbcModule;
 import io.trino.metadata.Catalog;
 import io.trino.metadata.CatalogManager;
 import io.trino.metadata.StaticCatalogStore;
@@ -108,6 +111,7 @@ public class Server
                 new EventListenerModule(),
                 new ExchangeManagerModule(),
                 new CoordinatorDiscoveryModule(),
+                new JdbcModule(),
                 new ServerMainModule(trinoVersion),
                 new GracefulShutdownModule(),
                 new WarningCollectorModule());
@@ -125,7 +129,18 @@ public class Server
 
             injector.getInstance(PluginManager.class).loadPlugins();
 
+            // 同时支持文件静态和动态加载catalog
             injector.getInstance(StaticCatalogStore.class).loadCatalogs();
+            /**
+             * [feature] dynamic load catalogs from db
+             *
+             * 20210721 shenlongguang github.com/ifengkou
+             */
+            //dynamic catalog logic
+            boolean enableDynamicCatalog = injector.getInstance(DynamicCatalogService.class).enable;
+            if (enableDynamicCatalog) {
+                injector.getInstance(DynamicCatalogStore.class).loadCatalogs();
+            }
 
             // TODO: remove this huge hack
             updateConnectorIds(injector.getInstance(Announcer.class), injector.getInstance(CatalogManager.class));

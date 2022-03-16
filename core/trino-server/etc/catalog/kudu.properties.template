@@ -1,0 +1,7 @@
+connector.name=kudu
+kudu.client.master-addresses=${kudu.master-addresses}
+kudu.schema-emulation.enabled=true
+kudu.client.default-socket-read-timeout=600s
+kudu.extension.array.enable=false
+kudu.extension.array.table.prefix=oprt,profile
+kudu.extension.array.schema.prefix=db_

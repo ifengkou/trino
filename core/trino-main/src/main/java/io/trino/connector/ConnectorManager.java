@@ -59,6 +59,7 @@ import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.SystemTable;
 import io.trino.spi.connector.TableProcedureMetadata;
 import io.trino.spi.eventlistener.EventListener;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.procedure.Procedure;
 import io.trino.spi.session.PropertyMetadata;
 import io.trino.spi.type.TypeManager;
@@ -127,6 +128,13 @@ public class ConnectorManager
     private final AnalyzePropertyManager analyzePropertyManager;
     private final TableProceduresPropertyManager tableProceduresPropertyManager;
 
+    /**
+     * [feature] Supplying JDBC Providers to plugins
+     * <p>
+     * 20210811 shenlongguang github.com/ifengkou
+     */
+    private final JdbcProvider jdbcProvider;
+
     private final boolean schedulerIncludeCoordinator;
 
     @GuardedBy("this")
@@ -165,7 +173,8 @@ public class ConnectorManager
             MaterializedViewPropertyManager materializedViewPropertyManager,
             AnalyzePropertyManager analyzePropertyManager,
             TableProceduresPropertyManager tableProceduresPropertyManager,
-            NodeSchedulerConfig nodeSchedulerConfig)
+            NodeSchedulerConfig nodeSchedulerConfig,
+            JdbcProvider jdbcProvider)
     {
         this.metadataManager = metadataManager;
         this.catalogManager = catalogManager;
@@ -194,6 +203,7 @@ public class ConnectorManager
         this.analyzePropertyManager = analyzePropertyManager;
         this.tableProceduresPropertyManager = tableProceduresPropertyManager;
         this.schedulerIncludeCoordinator = nodeSchedulerConfig.isIncludeCoordinator();
+        this.jdbcProvider = jdbcProvider;
     }
 
     @PreDestroy
@@ -397,7 +407,8 @@ public class ConnectorManager
                 new InternalMetadataProvider(metadataManager, typeManager),
                 pageSorter,
                 pageIndexerFactory,
-                duplicatePluginClassLoaderFactory);
+                duplicatePluginClassLoaderFactory,
+                jdbcProvider);
 
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(connectorFactory.getClass().getClassLoader())) {
             return connectorFactory.create(catalogName.getCatalogName(), properties, context);

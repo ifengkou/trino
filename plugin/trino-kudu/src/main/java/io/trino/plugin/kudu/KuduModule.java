@@ -18,6 +18,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import io.airlift.configuration.AbstractConfigurationAwareModule;
+import io.airlift.log.Logger;
 import io.trino.plugin.base.classloader.ClassLoaderSafeNodePartitioningProvider;
 import io.trino.plugin.base.classloader.ForClassLoaderSafe;
 import io.trino.plugin.kudu.procedures.RangePartitionProcedures;
@@ -26,6 +27,7 @@ import io.trino.spi.connector.ConnectorNodePartitioningProvider;
 import io.trino.spi.connector.ConnectorPageSinkProvider;
 import io.trino.spi.connector.ConnectorPageSourceProvider;
 import io.trino.spi.connector.ConnectorSplitManager;
+import io.trino.spi.extension.JdbcProvider;
 import io.trino.spi.procedure.Procedure;
 import io.trino.spi.type.TypeManager;
 
@@ -35,17 +37,26 @@ import static java.util.Objects.requireNonNull;
 public class KuduModule
         extends AbstractConfigurationAwareModule
 {
-    private final TypeManager typeManager;
+    private static final Logger log = Logger.get(KuduModule.class);
 
-    public KuduModule(TypeManager typeManager)
+    private final TypeManager typeManager;
+    private final JdbcProvider jdbcProvider;
+
+    public KuduModule(TypeManager typeManager, JdbcProvider jdbcProvider)
     {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
+        this.jdbcProvider = jdbcProvider;
     }
 
     @Override
     protected void setup(Binder binder)
     {
         binder.bind(TypeManager.class).toInstance(typeManager);
+        binder.bind(TypeManager.class).toInstance(typeManager);
+        binder.bind(JdbcProvider.class).toInstance(jdbcProvider);
+
+        binder.bind(KuduExtensionProvider.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(KuduExtensionConfig.class);
 
         binder.bind(KuduConnector.class).in(Scopes.SINGLETON);
         binder.bind(KuduMetadata.class).in(Scopes.SINGLETON);

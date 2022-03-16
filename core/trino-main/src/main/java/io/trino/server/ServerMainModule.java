@@ -34,6 +34,9 @@ import io.trino.client.NodeVersion;
 import io.trino.connector.ConnectorManager;
 import io.trino.connector.system.SystemConnectorModule;
 import io.trino.dispatcher.DispatchManager;
+import io.trino.dynamiccatalog.DynamicCatalogService;
+import io.trino.dynamiccatalog.DynamicCatalogStore;
+import io.trino.dynamiccatalog.DynamicCatalogStoreConfig;
 import io.trino.event.SplitMonitor;
 import io.trino.execution.DynamicFilterConfig;
 import io.trino.execution.ExplainAnalyzeContext;
@@ -370,6 +373,12 @@ public class ServerMainModule
         // metadata
         binder.bind(StaticCatalogStore.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(StaticCatalogStoreConfig.class);
+
+        // extension dynamic catalog service
+        binder.bind(DynamicCatalogService.class).in(Scopes.SINGLETON);
+        binder.bind(DynamicCatalogStore.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(DynamicCatalogStoreConfig.class);
+
         binder.bind(MetadataManager.class).in(Scopes.SINGLETON);
         binder.bind(Metadata.class).to(MetadataManager.class).in(Scopes.SINGLETON);
         newOptionalBinder(binder, SystemSecurityMetadata.class)
