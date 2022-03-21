@@ -21,6 +21,7 @@ import io.airlift.discovery.client.ServiceAnnouncement;
 import io.airlift.log.Logger;
 import io.trino.connector.CatalogName;
 import io.trino.connector.ConnectorManager;
+import io.trino.metadata.Catalog;
 import io.trino.metadata.CatalogManager;
 import io.trino.metadata.InternalNode;
 import io.trino.metadata.InternalNodeManager;
@@ -221,15 +222,13 @@ public class DynamicCatalogController
     public Response findCatalog(@QueryParam("catalogName") String catalogName)
     {
         log.info("-- findCatalog : catalogName = " + catalogName);
-        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
-        for (Map<String, String> catalog : catalogs) {
-            if (catalogName.equals(catalog.get("catalogName"))) {
-                if (catalogManager.getCatalog(catalogName).isPresent()) {
-                    catalog.put("usable", "1");
-                }
-                else {
-                    catalog.put("usable", "0");
-                }
+        List<Catalog> catalogs = catalogManager.getCatalogs();
+        for (Catalog catalog : catalogs) {
+            if (catalogName.equals(catalog.getCatalogName())) {
+                Map<String, String> catalogMap = new HashMap<>(2);
+                catalogMap.put("catalogName", catalog.getCatalogName());
+                catalogMap.put("connectorName", catalog.getConnectorName());
+                catalogMap.put("usable", "1");
                 return Response.status(Response.Status.OK).entity(catalog).type(MediaType.APPLICATION_JSON).build();
             }
         }
@@ -242,18 +241,14 @@ public class DynamicCatalogController
     @ResourceSecurity(PUBLIC)
     public Response findCatalogList()
     {
-        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
-        if (catalogs != null && catalogs.size() > 0) {
-            for (Map<String, String> catalog : catalogs) {
-                if (catalogManager.getCatalog(catalog.get("catalogName")).isPresent()) {
-                    catalog.put("usable", "1");
-                }
-                else {
-                    catalog.put("usable", "0");
-                }
-            }
-        }
-        return Response.status(Response.Status.OK).entity(catalogs).type(MediaType.APPLICATION_JSON).build();
+        List<Catalog> catalogs = catalogManager.getCatalogs();
+        List<Map<String, String>> catalogMapList = catalogs.stream().map(catalog -> {
+            Map<String, String> catalogMap = new HashMap<>(2);
+            catalogMap.put("catalogName", catalog.getCatalogName());
+            catalogMap.put("connectorName", catalog.getConnectorName());
+            return catalogMap;
+        }).collect(Collectors.toList());
+        return Response.status(Response.Status.OK).entity(catalogMapList).type(MediaType.APPLICATION_JSON).build();
     }
 
     @Path("exist")
@@ -265,15 +260,16 @@ public class DynamicCatalogController
         log.info("-- findCatalog : catalogName = " + catalogName);
         Map<String, Object> result = new HashMap<>(2);
         result.put("catalog", catalogName);
-        List<Map<String, String>> catalogs = dynamicCatalogService.loadCatalogsFromDb();
-        for (Map<String, String> catalog : catalogs) {
-            if (catalogName.equals(catalog.get("catalogName"))) {
-                result.put("exist", 1);
-                return Response.status(Response.Status.OK).entity(result).type(MediaType.APPLICATION_JSON).build();
-            }
+        List<Catalog> catalogs = catalogManager.getCatalogs();
+        boolean exist = catalogs.stream().anyMatch(catalog -> catalog.getCatalogName().equalsIgnoreCase(catalogName));
+        if (exist) {
+            result.put("exist", 1);
+            return Response.status(Response.Status.OK).entity(result).type(MediaType.APPLICATION_JSON).build();
         }
-        result.put("exist", 0);
-        return Response.status(Response.Status.NOT_FOUND).entity(result).type(MediaType.APPLICATION_JSON).build();
+        else {
+            result.put("exist", 0);
+            return Response.status(Response.Status.NOT_FOUND).entity(result).type(MediaType.APPLICATION_JSON).build();
+        }
     }
 
     private CatalogName createCatalog(String catalogName, String connectorName, Map<String, String> properties)
